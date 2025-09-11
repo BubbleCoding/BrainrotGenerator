@@ -32,18 +32,18 @@ a) Clone and enter the project directory:
 
 b) (Optional) Create a virtual environment:
    python -m venv env
-   # macOS/Linux:
+   macOS/Linux:
    source env/bin/activate
-   # Windows (PowerShell):
+   Windows (PowerShell):
    env\Scripts\Activate.ps1
 
 c) Install dependencies:
    pip install -r requirements.txt
 
 d) Set your OpenAI API key:
-   # macOS/Linux (bash/zsh):
+   macOS/Linux (bash/zsh):
    export OPENAI_API_KEY="sk-..."
-   # Windows (PowerShell):
+   Windows (PowerShell):
    $env:OPENAI_API_KEY="sk-..."
 
 
