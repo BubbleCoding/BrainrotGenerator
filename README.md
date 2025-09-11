@@ -1,6 +1,6 @@
 # BrainrotGenerator
 
-Turn ordinary names, animals, and fruits/objects into whimsical Italian‑style characters, complete with AI‑generated artwork. The app uses OpenAI GPT‑4o (for prompt crafting) and DALL·E 3 (for image generation), wrapped in a simple Gradio web UI with a Timeline view of all generated images.
+Turn ordinary names, animals, and fruits/objects into whimsical Italian brain‑style characters, complete with AI‑generated artwork. The app uses OpenAI GPT‑4o (for prompt crafting) and DALL·E 3 (for image generation), wrapped in a simple Gradio web UI with a Timeline view of all generated images.
 
 
 1) Features
