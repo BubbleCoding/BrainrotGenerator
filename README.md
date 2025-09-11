@@ -27,7 +27,7 @@ Output:
 3) Installation
 ---------------
 a) Clone and enter the project directory:
-   git clone https://github.com/YOURNAME/brainrot-generator.git
+   git clone https://github.com/BubbleCoding/BrainrotGenerator
    cd brainrot-generator
 
 b) (Optional) Create a virtual environment:
