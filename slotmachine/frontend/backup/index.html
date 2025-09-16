@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Slot Machine UI — 3D Cylinder (User Choice)</title>
+  <style>
+    :root { --accent:#5cf; --bg:#0a0a0a; --panel:#111; }
+    html, body { height:100%; }
+    body { margin:0; background:var(--bg); color:#eaeaea; font-family:ui-sans-serif, system-ui, -apple-system; }
+    header { text-align:center; padding:24px 12px; font-weight:600; letter-spacing:.5px; }
+    .status { text-align:center; padding:8px; min-height:24px; opacity:.9; }
+    .wrap { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; height:calc(100vh - 190px); padding:24px; box-sizing:border-box; }
+    .reel { position:relative; border:4px solid #1a1a1a; border-radius:24px; background:var(--panel); box-shadow:0 0 40px #000 inset; overflow:hidden; }
+    .scene { width:100%; height:100%; perspective: 1000px; perspective-origin: 50% 50%; position:relative; }
+    .cyl { width:100%; height:100%; position:absolute; inset:0; transform-style: preserve-3d; will-change: transform; }
+    .panel { position:absolute; top:50%; left:50%; width:86%; height:92px; margin-left:-43%; margin-top:-46px;
+             display:flex; align-items:center; justify-content:center; font-size:48px; text-shadow:0 2px 2px rgba(0,0,0,.3);
+             color:#eaeaea; backface-visibility: hidden; user-select:none; }
+    .reel::after { content:""; position:absolute; left:0; right:0; top:50%; height:0; border-top:2px solid var(--accent);
+                   opacity:.5; transform: translateY(-1px); pointer-events:none; z-index:5; }
+    .fadeMask { position:absolute; inset:0; pointer-events:none; z-index:4;
+                background: linear-gradient(to bottom, rgba(10,10,10,0.95), rgba(10,10,10,0.0) 20%, rgba(10,10,10,0.0) 80%, rgba(10,10,10,0.95)); }
+    .stopBadge { position:absolute; bottom:16px; right:16px; background:#1c1; color:#012; font-weight:800;
+                 padding:8px 12px; border-radius:12px; display:none; z-index:6; }
+    footer.controls { display:flex; gap:16px; justify-content:center; padding:16px; flex-wrap:wrap; }
+    button { font-size:22px; padding:16px 24px; border-radius:12px; border:none; background:#1a1a1a; color:#fff; cursor:pointer; }
+    button.primary { background:var(--accent); color:#001018; font-weight:800; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎰 Slot Machine Brainrot — 3D (You pick!)</h1>
+    <div class="status" id="status">Stop each reel with the symbol you want on the payline.</div>
+  </header>
+  <div class="wrap">
+    <div class="reel"><div class="scene"><div class="cyl" id="cyl0"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb0">Stopped</div></div>
+    <div class="reel"><div class="scene"><div class="cyl" id="cyl1"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb1">Stopped</div></div>
+    <div class="reel"><div class="scene"><div class="cyl" id="cyl2"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb2">Stopped</div></div>
+  </div>
+  <footer class="controls">
+    <button onclick="stopReel(0)">Stop A</button>
+    <button onclick="stopReel(1)">Stop B</button>
+    <button onclick="stopReel(2)">Stop C</button>
+    <button class="primary" id="resetBtn" onclick="resetAll()" disabled>Reset</button>
+    <button class="primary" onclick="window.location.href='/gallery.html'">📸 View Gallery</button>
+  </footer>
+
+<script>
+const ROW_H = 92;
+const ROT_SPEEDS = [0.05, 0.05, 0.05]; // deg/ms
+let ws;
+let reels = [[],[],[]];
+let spinning = [true,true,true];
+let rotX = [0,0,0];
+let lastTS = performance.now();
+let cylEls = [];
+let badgeEls = [];
+
+function connect(){
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onmessage = (ev)=>{
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'init') initUI(msg.reels);
+    if (msg.type === 'reel_stopped') onReelStopped(msg.reel, msg.symbol);
+    if (msg.type === 'all_stopped') setStatus("Composing prompt…");
+    if (msg.type === 'image_ready') {
+      window.location.href = "/gallery.html?url=" + encodeURIComponent(msg.url)
+                           + "&name=" + encodeURIComponent(msg.italian_name)
+                           + "&prompt=" + encodeURIComponent(msg.prompt);
+    }
+    if (msg.type === 'error') setStatus("⚠️ " + msg.message);
+  };
+  ws.onclose = ()=>{ setStatus("Disconnected. Reconnecting…"); setTimeout(connect, 800); };
+}
+function setStatus(s){ document.getElementById('status').textContent = s; }
+function buildCylinder(i){
+  const cyl = document.getElementById(`cyl${i}`);
+  cyl.innerHTML = "";
+  const items = reels[i]; const n = items.length; const step = 360 / n; const R = (ROW_H * n) / (2 * Math.PI);
+  items.forEach((txt, idx)=>{
+    const panel = document.createElement('div');
+    panel.className = 'panel'; panel.textContent = txt;
+    panel.style.transform = `rotateX(${idx * step}deg) translateZ(${R}px)`;
+    cyl.appendChild(panel);
+  });
+  cyl.dataset.step = step.toString();
+  rotX[i] = 0; cyl.style.transform = `rotateX(${rotX[i]}deg)`;
+}
+function initUI(reelData){
+  reels = [reelData[0], reelData[1], reelData[2]];
+  cylEls = [document.getElementById('cyl0'), document.getElementById('cyl1'), document.getElementById('cyl2')];
+  badgeEls = [document.getElementById('sb0'), document.getElementById('sb1'), document.getElementById('sb2')];
+  for (let i=0;i<3;i++) buildCylinder(i);
+  lastTS = performance.now(); requestAnimationFrame(tick);
+}
+function tick(now){
+  const dt = now - lastTS; lastTS = now;
+  for (let i=0;i<3;i++){
+    const cyl = cylEls[i]; if (!cyl) continue;
+    if (spinning[i]) rotX[i] = (rotX[i] + ROT_SPEEDS[i] * dt) % 360;
+    cyl.style.transform = `rotateX(${rotX[i]}deg)`;
+  }
+  requestAnimationFrame(tick);
+}
+function currentSymbol(i){
+  const list = reels[i];
+  const n = list.length;
+  const step = 360 / n;
+  // panel idx at front when rotX = -idx*step. Compute nearest index.
+  const idx = Math.round((-rotX[i]) / step) % n;
+  const wrapped = (idx + n) % n;
+  return list[wrapped];
+}
+function stopReel(i){
+  if (!spinning[i]||!ws||ws.readyState!==1) return;
+  spinning[i]=false;
+  const symbol = currentSymbol(i);
+  ws.send(JSON.stringify({type:"stop_reel", reel:i, symbol}));
+  setStatus(`Locked ${"ABC"[i]}: ${symbol}.`);
+}
+function onReelStopped(i,symbol){
+  badgeEls[i].textContent = `Stopped: ${symbol}`;
+  badgeEls[i].style.display='block';
+  // snap visually to exactly the chosen symbol
+  const list = reels[i]; const idx = list.indexOf(symbol); if (idx<0) return;
+  const step = 360 / list.length;
+  rotX[i] = -idx * step;
+  cylEls[i].style.transform = `rotateX(${rotX[i]}deg)`;
+}
+function resetAll(){
+  badgeEls.forEach(b=>{b.style.display='none'; b.textContent='Stopped';});
+  spinning=[true,true,true];
+  setStatus("Ready. Stop each reel with your chosen symbol.");
+  if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:"reset"}));
+}
+connect();
+</script>
+</body>
+</html>

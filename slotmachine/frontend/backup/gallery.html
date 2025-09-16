@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Brainrot Gallery</title>
+  <style>
+    body { margin:0; font-family:ui-sans-serif,system-ui; background:#0a0a0a; color:#eee; }
+    header { padding:16px; text-align:center; background:#111; }
+    h1 { margin:0; font-size:28px; }
+    .main { padding:24px; }
+    .bigimg { display:block; max-width:100%; margin:0 auto 24px; border-radius:12px; box-shadow:0 0 20px #000; }
+    .meta { text-align:center; margin-bottom:24px; white-space:pre-wrap; }
+    .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+    .gallery img { width:100%; border-radius:8px; cursor:pointer; }
+    .backbtn { display:block; margin:32px auto; padding:12px 24px; font-size:18px; border:none; border-radius:8px; background:#5cf; color:#001018; font-weight:700; cursor:pointer; }
+  </style>
+</head>
+<body>
+<header><h1>Brainrot Gallery</h1></header>
+<div class="main">
+  <div class="meta" id="meta"></div>
+  <img id="mainImage" class="bigimg" src="" alt="Generated"/>
+  <h2>All Images</h2>
+  <div id="gallery" class="gallery"></div>
+  <button class="backbtn" onclick="window.location.href='/'">🎰 Back to Slot</button>
+</div>
+<script>
+function qs(name){ const url=new URL(window.location.href); return url.searchParams.get(name)||""; }
+const imgUrl=qs("url"), italian=qs("name"), prompt=qs("prompt");
+if(imgUrl){ document.getElementById("mainImage").src=imgUrl; document.getElementById("meta").textContent=italian+" — "+prompt; }
+else{ document.getElementById("meta").textContent="Select an image below to view details."; document.getElementById("mainImage").style.display="none"; }
+
+async function loadGallery(){
+  try{
+    const res = await fetch("/gallery_manifest");
+    const data = await res.json();
+    const gal=document.getElementById("gallery");
+    data.reverse().forEach(item=>{
+      const img=document.createElement("img");
+      img.src=item.url;
+      img.title=item.italian_name || "";
+      img.onclick=()=>{
+        document.getElementById("mainImage").style.display="block";
+        document.getElementById("mainImage").src=item.url;
+        document.getElementById("meta").textContent=(item.italian_name||"")+" — "+(item.prompt||"");
+      };
+      gal.appendChild(img);
+    });
+  }catch(e){ console.error("Failed to load manifest", e); }
+}
+loadGallery();
+</script>
+</body>
+</html>
