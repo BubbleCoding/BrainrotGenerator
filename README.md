@@ -1,6 +1,6 @@
 # BrainrotGenerator
 
-Turn ordinary names, animals, and fruits/objects into whimsical Italian‑style characters, complete with AI‑generated artwork. The app uses OpenAI GPT‑4o (for prompt crafting) and DALL·E 3 (for image generation), wrapped in a simple Gradio web UI with a Timeline view of all generated images.
+Turn ordinary names, animals, and fruits/objects into whimsical Italian brain‑style characters, complete with AI‑generated artwork. The app uses OpenAI GPT‑4o (for prompt crafting) and DALL·E 3 (for image generation), wrapped in a simple Gradio web UI with a Timeline view of all generated images.
 
 
 1) Features
@@ -27,23 +27,31 @@ Output:
 3) Installation
 ---------------
 a) Clone and enter the project directory:
-   git clone https://github.com/YOURNAME/brainrot-generator.git
+   git clone https://github.com/BubbleCoding/BrainrotGenerator
    cd brainrot-generator
 
 b) (Optional) Create a virtual environment:
    python -m venv env
-   # macOS/Linux:
+   
+   macOS/Linux:
+   
    source env/bin/activate
-   # Windows (PowerShell):
+   
+   Windows (PowerShell):
+   
    env\Scripts\Activate.ps1
 
 c) Install dependencies:
    pip install -r requirements.txt
 
 d) Set your OpenAI API key:
-   # macOS/Linux (bash/zsh):
+   
+   macOS/Linux (bash/zsh):
+   
    export OPENAI_API_KEY="sk-..."
-   # Windows (PowerShell):
+   
+   Windows (PowerShell):
+   
    $env:OPENAI_API_KEY="sk-..."
 
 
