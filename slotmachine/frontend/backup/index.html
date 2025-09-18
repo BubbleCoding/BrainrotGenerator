@@ -1,10 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Slot Machine UI — 3D Cylinder (User Choice)</title>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>Slot Machine UI — 3D Cylinder (User Choice)</title>
+<style>
     :root { --accent:#5cf; --bg:#0a0a0a; --panel:#111; }
     html, body { height:100%; }
     body { margin:0; background:var(--bg); color:#eaeaea; font-family:ui-sans-serif, system-ui, -apple-system; }
@@ -27,26 +28,89 @@
     button { font-size:22px; padding:16px 24px; border-radius:12px; border:none; background:#1a1a1a; color:#fff; cursor:pointer; }
     button.primary { background:var(--accent); color:#001018; font-weight:800; }
     button:disabled { opacity:.5; cursor:not-allowed; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>🎰 Slot Machine Brainrot — 3D (You pick!)</h1>
-    <div class="status" id="status">Stop each reel with the symbol you want on the payline.</div>
-  </header>
-  <div class="wrap">
-    <div class="reel"><div class="scene"><div class="cyl" id="cyl0"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb0">Stopped</div></div>
-    <div class="reel"><div class="scene"><div class="cyl" id="cyl1"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb1">Stopped</div></div>
-    <div class="reel"><div class="scene"><div class="cyl" id="cyl2"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb2">Stopped</div></div>
-  </div>
-  <footer class="controls">
-    <button onclick="stopReel(0)">Stop A</button>
-    <button onclick="stopReel(1)">Stop B</button>
-    <button onclick="stopReel(2)">Stop C</button>
-    <button class="primary" id="resetBtn" onclick="resetAll()" disabled>Reset</button>
-    <button class="primary" onclick="window.location.href='/gallery.html'">📸 View Gallery</button>
-  </footer>
+  
 
+/* === POLISH PACK v1 === */
+/* Theme */
+:root {
+  --accent: #5cf;
+}
+body {
+  background: radial-gradient(circle at center, #111 0%, #000 100%);
+}
+/* Reel chrome/glass */
+.reel {
+  border: 2px solid #444;
+  box-shadow: inset 0 2px 6px rgba(255,255,255,0.08), inset 0 -3px 10px rgba(0,0,0,0.6), 0 10px 24px rgba(0,0,0,0.35);
+  background: linear-gradient(to bottom,#1a1a1a,#0f0f0f);
+  border-radius: 16px;
+  overflow: hidden;
+}
+/* Center payline glow */
+.fadeMask::after {
+  content:"";
+  position:absolute; left:0; right:0; top:50%;
+  height:2px; transform:translateY(-1px);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  filter: drop-shadow(0 0 6px var(--accent));
+  opacity:.6; animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:.9} }
+/* Typography for symbols */
+.cyl div {
+  font-family: 'Orbitron', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1.25;
+}
+/* Stop badges pop */
+.stopBadge {
+  transform: scale(0.8);
+  opacity: 0;
+  transition: transform .18s ease, opacity .18s ease;
+}
+.stopBadge.show {
+  display:block !important;
+  transform: scale(1);
+  opacity: 1;
+}
+/* Lever */
+.lever {
+  display:inline-block; margin-left:12px;
+  width:60px; height:120px; position:relative; vertical-align:middle;
+  background: linear-gradient(#5a5a5a,#2a2a2a);
+  border:3px solid #888; border-radius:30px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.45);
+  cursor:pointer;
+}
+.lever::after {
+  content:""; position:absolute; top:-18px; left:50%; transform:translateX(-50%);
+  width:20px; height:20px; border-radius:50%;
+  background: var(--accent); box-shadow:0 0 10px var(--accent), inset 0 0 6px rgba(255,255,255,.6);
+}
+@media (prefers-reduced-motion: reduce){
+  .fadeMask::after { animation: none; opacity: .35; }
+}
+/* === END POLISH PACK === */
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&amp;display=swap" rel="stylesheet"/></head>
+<body>
+<header>
+<h1>🎰 Slot Machine Brainrot — 3D (You pick!)</h1>
+<div class="status" id="status">Stop each reel with the symbol you want on the payline.</div>
+</header>
+<div class="wrap">
+<div class="reel"><div class="scene"><div class="cyl" id="cyl0"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb0">Stopped</div></div>
+<div class="reel"><div class="scene"><div class="cyl" id="cyl1"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb1">Stopped</div></div>
+<div class="reel"><div class="scene"><div class="cyl" id="cyl2"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb2">Stopped</div></div>
+</div>
+<footer class="controls">
+<button onclick="stopReel(0)">Stop A</button>
+<button onclick="stopReel(1)">Stop B</button>
+<button onclick="stopReel(2)">Stop C</button>
+<button class="primary" disabled="" id="resetBtn" onclick="resetAll()">Reset</button>
+<button class="primary" onclick="window.location.href='/gallery.html'">📸 View Gallery</button>
+<div class="lever" onclick="pullLever()"></div></footer>
 <script>
 const ROW_H = 92;
 const ROT_SPEEDS = [0.05, 0.05, 0.05]; // deg/ms
@@ -137,5 +201,70 @@ function resetAll(){
 }
 connect();
 </script>
-</body>
+<script>
+// === POLISH PACK JS v1 ===
+(function(){
+  // Microcopy flavor
+  const FLAVOR = ["Nice pick!", "Two to go!", "Feeling lucky?", "Lock it in!", "Almost there!"];
+  const oldSetStatus = window.setStatus;
+  window.setStatus = function(msg){
+    try {
+      if (msg && msg.startsWith("Locked")) {
+        msg += " " + FLAVOR[Math.floor(Math.random()*FLAVOR.length)];
+      }
+    } catch(e){}
+    return oldSetStatus(msg);
+  }
+
+  // Badge pop-in
+  const origOnReelStopped = window.onReelStopped;
+  window.onReelStopped = function(i, symbol){
+    origOnReelStopped(i, symbol);
+    const b = document.getElementById("sb"+i);
+    if (b) b.classList.add("show");
+
+    // Overshoot + ease to snap
+    try {
+      const cyl = window.cylEls?.[i];
+      const list = window.reels?.[i] || [];
+      const idx = list.indexOf(symbol);
+      if (!cyl || idx<0) return;
+      const step = 360 / list.length;
+      const current = window.rotX?.[i] || 0;
+      const target = -idx * step;
+      const overshoot = 8;
+      const frames = 18;
+      let f = 0;
+      function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
+      (function anim(){
+        f++;
+        const t = Math.min(f/frames, 1);
+        const e = easeOutCubic(t);
+        const val = current + (target - current + (t<1 ? overshoot : 0)) * e;
+        window.rotX[i] = val;
+        cyl.style.transform = `rotateX(${val}deg)`;
+        if (f < frames) requestAnimationFrame(anim);
+        else { window.rotX[i] = target; cyl.style.transform = `rotateX(${target}deg)`; }
+      })();
+    } catch(e){}
+  }
+
+  // Lever to reset/spin all
+  window.pullLever = function(){
+    const btn = document.querySelector(".lever");
+    if (btn){ btn.style.transform = "translateY(2px)"; setTimeout(()=>btn.style.transform="",120); }
+    if (typeof window.resetAll === "function") window.resetAll();
+  }
+
+  // Keyboard shortcuts: A/S/D stop, R reset
+  window.addEventListener("keydown", (e)=>{
+    const k = e.key.toLowerCase();
+    if (k === "r") { e.preventDefault(); window.pullLever(); }
+    if (k === "a") { e.preventDefault(); window.stopReel?.(0); }
+    if (k === "s") { e.preventDefault(); window.stopReel?.(1); }
+    if (k === "d") { e.preventDefault(); window.stopReel?.(2); }
+  });
+})();
+// === END POLISH PACK JS v1 ===
+</script></body>
 </html>
