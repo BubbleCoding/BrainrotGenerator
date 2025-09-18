@@ -140,7 +140,7 @@ body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet"/></head>
 <body>
 <header>
-  <h1>🎰 Slot Machine Brainrot — 3D (You pick!)</h1>
+  <!-- <h1>🎰 Slot Machine Brainrot — 3D (You pick!)</h1> -->
   <div class="status" id="status">Stop each reel with the symbol you want on the payline.</div>
 </header>
 
@@ -155,9 +155,9 @@ body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
   <button onclick="stopReel(0)">Stop A</button>
   <button onclick="stopReel(1)">Stop B</button>
   <button onclick="stopReel(2)">Stop C</button>
-  <button class="primary" disabled id="resetBtn" onclick="resetAll()">Reset</button>
+  <button class="primary" id="resetBtn" onclick="resetAll()">Reset</button>
   <button class="primary" onclick="window.location.href='/gallery.html'">📸 View Gallery</button>
-  <div class="lever" onclick="pullLever()"></div>
+  <!-- <div class="lever" onclick="pullLever()"></div> -->
 </footer>
 
 <!-- LOADING OVERLAY -->
@@ -273,7 +273,7 @@ function stopReel(i){
     document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
   }
 }
-function onReelStopped(i,symbol){
+function onReelStopped(i,symbol){  // Deze komt wordt niet gebruikt na reset
   badgeEls[i].textContent = `Stopped: ${symbol}`;
   badgeEls[i].style.display='block';
   const list = reels[i]; const idx = list.indexOf(symbol); if (idx<0) return;
@@ -282,7 +282,7 @@ function onReelStopped(i,symbol){
   cylEls[i].style.transform = `rotateX(${rotX[i]}deg)`;
 }
 function resetAll(){
-  badgeEls.forEach(b=>{b.style.display='none'; b.textContent='Stopped';});
+  badgeEls.forEach(b=>{ b.classList.remove('show'); b.style.display='none'; b.textContent='Stopped';});
   spinning=[true,true,true];
   setStatus("Ready. Stop each reel with your chosen symbol.");
   hideOverlay();
