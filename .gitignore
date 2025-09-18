@@ -3,4 +3,4 @@ env/
 *.png
 *.pyc
 __pycache__/
-slotmachine/frontend/generated/manifest.jsonl
+generated/
