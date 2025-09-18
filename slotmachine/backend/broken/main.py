@@ -14,7 +14,7 @@ cli = OpenAI(api_key=OPENAI_API_KEY)
 ROLE_PROMPT = """You are a creator of artistic prompts for DALL·E 3 image generation.
 You will receive: (1) an animal, (2) a fruit, and (3) an object.
 Tasks:
-1) Generate an Italian-sounding name (no real people) based on the animal, fruit and object. Keep it tasteful, 2–4 words max.
+1) Generate an Italian-sounding name (no real people) based on the animal, fruit and object. Keep it tasteful, 2-4 words max.
 2) Write a vivid, specific prompt for DALL·E 3 that fuses the animal, fruit and object into a single coherent character with clear materials, textures, shapes, and composition. Avoid story; focus on visual description and style.
 3) Do NOT include camera brands or copyrighted style names. Keep it PG-13.
 Return ONLY valid JSON with keys: italian_name, prompt.
@@ -48,6 +48,10 @@ def index():
 @app.get("/gallery.html", include_in_schema=False)
 def gallery():
     return FileResponse("frontend/gallery.html")
+
+@app.get("/waiting.html", include_in_schema=False)
+def waiting():
+    return FileResponse("frontend/waiting.html")
 
 app.mount("/static", StaticFiles(directory="frontend", html=False), name="static")
 

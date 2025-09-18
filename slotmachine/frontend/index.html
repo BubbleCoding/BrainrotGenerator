@@ -128,7 +128,7 @@ function connect(){
     const msg = JSON.parse(ev.data);
     if (msg.type === 'init') initUI(msg.reels);
     if (msg.type === 'reel_stopped') onReelStopped(msg.reel, msg.symbol);
-    if (msg.type === 'all_stopped') { window.location.href = '/waiting.html'; }
+    if (msg.type === 'all_stopped') setStatus("Composing prompt…");
     if (msg.type === 'image_ready') {
       window.location.href = "/gallery.html?url=" + encodeURIComponent(msg.url)
                            + "&name=" + encodeURIComponent(msg.italian_name)
@@ -183,12 +183,6 @@ function stopReel(i){
   const symbol = currentSymbol(i);
   ws.send(JSON.stringify({type:"stop_reel", reel:i, symbol}));
   setStatus(`Locked ${"ABC"[i]}: ${symbol}.`);
-  // If this was the last reel, go to waiting immediately (optimistic UI)
-  // if (!spinning.every(Boolean)) {
-  //   if (!spinning[0] && !spinning[1] && !spinning[2]) {
-  //     window.location.href = '/waiting.html';
-  //   }
-  // }
 }
 function onReelStopped(i,symbol){
   badgeEls[i].textContent = `Stopped: ${symbol}`;

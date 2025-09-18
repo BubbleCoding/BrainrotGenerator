@@ -49,10 +49,6 @@ def index():
 def gallery():
     return FileResponse("frontend/gallery.html")
 
-@app.get("/waiting.html", include_in_schema=False)
-def waiting():
-    return FileResponse("frontend/waiting.html")
-
 app.mount("/static", StaticFiles(directory="frontend", html=False), name="static")
 
 @app.get("/gallery_manifest")
@@ -130,6 +126,11 @@ async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     clients.add(ws)
 
+    # reset state on new connection
+    state["spinning"] = [True, True, True]
+    state["result"] = [None, None, None]
+    state["session_seed"] = 0
+
     try:
         await ws.send_text(json.dumps({"type":"init","reels":REELS}))
         while True:
@@ -157,14 +158,12 @@ async def ws_endpoint(ws: WebSocket):
 
                     if all(not s for s in state["spinning"]):
                         await broadcast({"type":"all_stopped","result":state["result"]})
-                        await broadcast({"type":"phase","step":2,"status":"Composing prompt…"})
                         try:
                             animal, fruit, obj = state["result"]
                             # animal + (fruit or object) logic: give preference to fruit; else object
                             italian_name, dalle_prompt = generate_prompt_and_name(
-                                animal, fruit,  obj
+                                "Player", animal, fruit or obj
                             )
-                            await broadcast({"type":"phase","step":3,"status":"Generating image…"})
                             img_path = generate_image(dalle_prompt)
                             url = "/static/generated/" + os.path.basename(img_path)
 
@@ -178,7 +177,6 @@ async def ws_endpoint(ws: WebSocket):
                             with open(manifest_path,"a",encoding="utf-8") as mf:
                                 mf.write(json.dumps(entry)+"\n")
 
-                            await broadcast({"type":"phase","step":4,"status":"Saving & updating gallery…"})
                             await broadcast({"type":"image_ready","url":url,"prompt":dalle_prompt,"italian_name":italian_name})
                         except Exception as e:
                             await broadcast({"type":"error","message":str(e)})
