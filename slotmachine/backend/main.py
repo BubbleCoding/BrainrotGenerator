@@ -1,11 +1,5 @@
-import os
-import time
-import json
-import datetime
-import requests
-import asyncio
+import os, time, json, datetime, requests, asyncio
 from typing import Dict, Any, Set
-
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -14,23 +8,16 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 # ---------------------------
-# Optional GPIO (Pi only)
+# GPIO setup
 # ---------------------------
-GPIO_AVAILABLE = False
-try:
-    from gpiozero import Button, Device  # type: ignore
-    GPIO_AVAILABLE = True
-except Exception:
-    GPIO_AVAILABLE = False
+from gpiozero import Button, Device
+from gpiozero.pins.pigpio import PiGPIOFactory
 
-# Try to import PiGPIOFactory to force a stable backend
-try:
-    from gpiozero.pins.pigpio import PiGPIOFactory  # type: ignore
-except Exception:  # pragma: no cover
-    PiGPIOFactory = None  # type: ignore
+Device.pin_factory = PiGPIOFactory()   # force pigpio
+loop = asyncio.get_event_loop()        # single global loop
 
 # ---------------------------
-# Env & OpenAI
+# OpenAI setup
 # ---------------------------
 load_dotenv()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -49,7 +36,7 @@ Return ONLY valid JSON with keys: italian_name, prompt.
 """
 JSON_INSTRUCTION = 'Return ONLY JSON like: {"italian_name":"...", "prompt":"..."}'
 
-REELS: Dict[int, list] = {
+REELS = {
     0: ["Cat","Dog","Shark","Octopus","Dragon","Snake","Elephant","Lion","Bear","Horse",
         "Rabbit","Wolf","Tiger","Fox","Dolphin","Eagle","Owl","Frog","Penguin","Giraffe",
         "Zebra","Kangaroo","Crocodile","Parrot","Bat","Whale","Ant","Bee","Crab","Lizard"],
@@ -61,7 +48,7 @@ REELS: Dict[int, list] = {
         "Drum","Brush","Palette","Hammer","Anvil","Telescope","Compass","Anchor","Rope","Backpack"]
 }
 
-state: Dict[str, Any] = {
+state = {
     "spinning": [True, True, True],
     "result":   [None, None, None],
     "session_seed": 0
@@ -70,7 +57,7 @@ state: Dict[str, Any] = {
 app = FastAPI()
 
 # ---------------------------
-# Static & routes
+# Static routes
 # ---------------------------
 @app.get("/", include_in_schema=False)
 def index():
@@ -97,22 +84,20 @@ clients: Set[WebSocket] = set()
 _clients_lock = asyncio.Lock()
 
 async def broadcast(payload: dict):
-    dead: Set[WebSocket] = set()
+    dead = set()
     async with _clients_lock:
         for ws in list(clients):
             try:
                 await ws.send_text(json.dumps(payload))
             except Exception:
                 dead.add(ws)
-        for ws in dead:
-            clients.discard(ws)
+        clients.difference_update(dead)
 
 # ---------------------------
 # Prompt & image generation
 # ---------------------------
-def generate_prompt_and_name(animal: str, fruit: str, object: str, retries: int = 3):
-    user_block = f"Animal: {animal}\\Fruit: {fruit}\\nObject: {object}\\n"
-    last_err = None
+def generate_prompt_and_name(animal: str, fruit: str, obj: str, retries: int = 3):
+    user_block = f"Animal: {animal}\\Fruit: {fruit}\\nObject: {obj}\\n"
     for attempt in range(1, retries+1):
         try:
             r = cli.chat.completions.create(
@@ -132,12 +117,9 @@ def generate_prompt_and_name(animal: str, fruit: str, object: str, retries: int 
             data = json.loads(content)
             return data["italian_name"].strip(), data["prompt"].strip()
         except Exception as e:
-            last_err = e
-            if attempt < retries:
-                time.sleep(min(2 ** attempt, 10))
-            else:
-                raise RuntimeError(f"Prompt generation failed: {e}") from e
-    raise RuntimeError(f"Unexpected: {last_err}")
+            if attempt == retries:
+                raise
+            time.sleep(min(2**attempt, 10))
 
 def generate_image(prompt: str) -> str:
     resp = cli.images.generate(
@@ -149,8 +131,6 @@ def generate_image(prompt: str) -> str:
         n=1,
     )
     url = resp.data[0].url
-    if not url:
-        raise RuntimeError("No image URL from Images API.")
     r = requests.get(url, timeout=60); r.raise_for_status()
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     fname = f"slot_{ts}.png"
@@ -163,9 +143,7 @@ def generate_image(prompt: str) -> str:
 # Shared input handler
 # ---------------------------
 async def handle_input(data: Dict[str, Any]):
-    msg_type = data.get("type")
-
-    if msg_type == "stop_reel":
+    if data.get("type") == "stop_reel":
         idx = int(data["reel"])
         if 0 <= idx < 3 and state["spinning"][idx]:
             sym = data.get("symbol")
@@ -174,19 +152,16 @@ async def handle_input(data: Dict[str, Any]):
                 symbol = sym
             else:
                 t = time.time_ns()
-                seed = (state.get("session_seed", 0) or 0) ^ (idx * 7919) ^ (t & 0xFFFFFFFF)
+                seed = (state.get("session_seed", 0) or 0) ^ (idx*7919) ^ (t & 0xFFFFFFFF)
                 symbol = items[seed % len(items)]
             state["spinning"][idx] = False
             state["result"][idx] = symbol
-            await broadcast({"type": "reel_stopped", "reel": idx, "symbol": symbol})
-
+            await broadcast({"type":"reel_stopped","reel":idx,"symbol":symbol})
             if all(not s for s in state["spinning"]):
-                await broadcast({"type": "all_stopped", "result": state["result"]})
+                await broadcast({"type":"all_stopped","result":state["result"]})
                 try:
                     animal, fruit, obj = state["result"]
-                    italian_name, dalle_prompt = generate_prompt_and_name(
-                        "Player", animal, fruit or obj
-                    )
+                    italian_name, dalle_prompt = generate_prompt_and_name("Player", animal, fruit or obj)
                     img_path = generate_image(dalle_prompt)
                     url = "/static/generated/" + os.path.basename(img_path)
                     entry = {
@@ -195,17 +170,16 @@ async def handle_input(data: Dict[str, Any]):
                         "prompt": dalle_prompt,
                         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     }
-                    manifest_path = os.path.join("frontend","generated","manifest.jsonl")
-                    with open(manifest_path,"a",encoding="utf-8") as mf:
-                        mf.write(json.dumps(entry) + "\n")
-                    await broadcast({"type": "image_ready","url":url,"prompt":dalle_prompt,"italian_name":italian_name})
+                    with open(os.path.join("frontend","generated","manifest.jsonl"),"a",encoding="utf-8") as mf:
+                        mf.write(json.dumps(entry)+"\n")
+                    await broadcast({"type":"image_ready","url":url,"prompt":dalle_prompt,"italian_name":italian_name})
                 except Exception as e:
                     await broadcast({"type":"error","message":str(e)})
-    elif msg_type == "reset":
+    elif data.get("type") == "reset":
         state["spinning"] = [True, True, True]
         state["result"] = [None, None, None]
         state["session_seed"] = 0
-        await broadcast({"type": "reset_ok"})
+        await broadcast({"type":"reset_ok"})
 
 # ---------------------------
 # WebSocket endpoint
@@ -215,11 +189,9 @@ async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     async with _clients_lock:
         clients.add(ws)
-
     state["spinning"] = [True, True, True]
     state["result"] = [None, None, None]
-    state["session_seed"] = int(time.time() * 1000) % 1_000_000
-
+    state["session_seed"] = int(time.time()*1000) % 1_000_000
     try:
         await ws.send_text(json.dumps({"type":"init","reels":REELS}))
         while True:
@@ -227,52 +199,25 @@ async def ws_endpoint(ws: WebSocket):
                 msg = await ws.receive_text()
             except WebSocketDisconnect:
                 break
-            data = json.loads(msg)
-            await handle_input(data)
+            await handle_input(json.loads(msg))
     finally:
         async with _clients_lock:
             clients.discard(ws)
 
 # ---------------------------
-# GPIO buttons -> same handler
+# GPIO buttons
 # ---------------------------
-@app.on_event("startup")
-async def gpio_startup():
-    if not GPIO_AVAILABLE:
-        print("[GPIO] gpiozero not available; skipping GPIO setup.")
-        return
+def gpio_schedule(payload):
+    print("[GPIO]", payload)
+    asyncio.run_coroutine_threadsafe(broadcast({"type":"debug","msg":payload}), loop)
+    asyncio.run_coroutine_threadsafe(handle_input(payload), loop)
 
-    if PiGPIOFactory is not None:
-        try:
-            Device.pin_factory = PiGPIOFactory()
-            print("[GPIO] Using pin factory:", type(Device.pin_factory).__name__)
-        except Exception as e:
-            print("[GPIO] Failed to set PiGPIOFactory:", e)
-    else:
-        print("[GPIO] PiGPIOFactory not importable; using default pin factory.")
+btn23 = Button(23, pull_up=True, bounce_time=0.1)
+btn27 = Button(27, pull_up=True, bounce_time=0.1)
+btn22 = Button(22, pull_up=True, bounce_time=0.1)
 
-    loop = asyncio.get_running_loop()
+btn23.when_pressed = lambda: gpio_schedule({"type":"stop_reel","reel":0})
+btn27.when_pressed = lambda: gpio_schedule({"type":"stop_reel","reel":1})
+btn22.when_pressed = lambda: gpio_schedule({"type":"stop_reel","reel":2})
 
-    left_btn   = Button(23, pull_up=True, bounce_time=0.1)
-    middle_btn = Button(27, pull_up=True, bounce_time=0.1)
-    right_btn  = Button(22, pull_up=True, bounce_time=0.1)
-
-    def schedule(payload):
-        asyncio.run_coroutine_threadsafe(broadcast({"type":"debug","msg":payload}), loop)
-        asyncio.run_coroutine_threadsafe(handle_input(payload), loop)
-
-    def on_left():
-        print("[GPIO] LEFT pressed (GPIO23)")
-        schedule({"type":"stop_reel","reel":0})
-    def on_middle():
-        print("[GPIO] MIDDLE pressed (GPIO27)")
-        schedule({"type":"stop_reel","reel":1})
-    def on_right():
-        print("[GPIO] RIGHT pressed (GPIO22)")
-        schedule({"type":"stop_reel","reel":2})
-
-    left_btn.when_pressed = on_left
-    middle_btn.when_pressed = on_middle
-    right_btn.when_pressed = on_right
-
-    print("[GPIO] Buttons active on BCM 23, 27, 22 (other leg to any GND).")
+print("[GPIO] Buttons active on BCM 23, 27, 22 (press to send reel stops)")
