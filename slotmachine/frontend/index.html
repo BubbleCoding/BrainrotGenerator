@@ -291,37 +291,50 @@ function stopReel(i){
     document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
   }
 }
-function onReelStopped(i,symbol){
-  // <<< NEW: ensure the reel visually stops even from GPIO path >>>
+function onReelStopped(i, symbol) {
+  // Update UI state
   spinning[i] = false;
-
   badgeEls[i].textContent = `Stopped: ${symbol}`;
-  badgeEls[i].style.display='block';
+  badgeEls[i].style.display = 'block';
 
-  const list = reels[i]; const idx = list.indexOf(symbol); if (idx<0) return;
-  const step = 360 / list.length;
-  const target = -idx * step;
+  const list = reels[i];
+  const idx = list.indexOf(symbol);
+  if (idx < 0) return;
 
-  // Smooth snap animation to target
-  const cyl = cylEls[i];
-  const start = rotX[i];
+  const step    = 360 / list.length;
+  const current = rotX[i];
+  const targetAbs = -idx * step;
+
+  // Compute the shortest rotation (diff in range [-180,180])
+  let diff = (targetAbs - current) % 360;
+  if (diff > 180)    diff -= 360;
+  if (diff < -180)   diff += 360;
+  const dest = current + diff;
+
+  // Animate smoothly to dest with easing
   const frames = 18;
-  let f = 0;
-  function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
-  (function anim(){
-    f++;
-    const t = Math.min(f/frames, 1);
-    const e = easeOutCubic(t);
-    const val = start + (target - start) * e;
+  let frame = 0;
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+  (function animate() {
+    frame++;
+    const t = Math.min(frame / frames, 1);
+    const eased = easeOutCubic(t);
+    const val = current + diff * eased;
     rotX[i] = val;
-    cyl.style.transform = `rotateX(${val}deg)`;
-    if (f < frames) requestAnimationFrame(anim);
-    else { rotX[i] = target; cyl.style.transform = `rotateX(${target}deg)`; }
+    cylEls[i].style.transform = `rotateX(${val}deg)`;
+    if (frame < frames) {
+      requestAnimationFrame(animate);
+    } else {
+      rotX[i] = dest;
+      cylEls[i].style.transform = `rotateX(${dest}deg)`;
+    }
   })();
 
-  // Disable buttons when all three are stopped (also covers GPIO path)
-  if (spinning.every(v=>!v)) {
-    document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
+  // Disable Stop buttons when all reels are stopped
+  if (spinning.every(v => !v)) {
+    document.querySelectorAll('button:not(.primary)').forEach(b => (b.disabled = true));
   }
 }
 function resetAll(){
