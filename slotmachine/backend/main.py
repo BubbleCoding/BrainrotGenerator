@@ -188,6 +188,7 @@ async def ws_endpoint(ws: WebSocket):
                     state["result"][idx] = symbol
                     await broadcast({"type":"reel_stopped","reel":idx,"symbol":symbol})
                     if all(not s for s in state["spinning"]):
+                        await asyncio.sleep(0.1)
                         await broadcast({"type":"all_stopped","result":state["result"]})
                         try:
                             animal, fruit, obj = state["result"]
