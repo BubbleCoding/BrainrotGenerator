@@ -220,9 +220,18 @@ function connect(){
     // a stop_reel command just like a click. This ensures that the spinning
     // state and UI are updated consistently when using GPIO buttons.
     if (msg.type === 'gpio_press') {
-      printf("GPIO press on reel %d", msg.reel);
-      stopReel(msg.reel);
+      if (spinning[msg.reel] && ws && ws.readyState === 1) {
+        spinning[msg.reel] = false;
+        const symbol = currentSymbol(msg.reel);
+        ws.send(JSON.stringify({ type: "stop_reel", reel: msg.reel, symbol }));
+        setStatus(`Locked ${"ABC"[msg.reel]} (GPIO): ${symbol}.`);
+        if (spinning.every(v => !v)) {
+          document.querySelectorAll('button:not(.primary)')
+            .forEach(b => b.disabled = true);
+        }
+      }
     }
+
     if (msg.type === 'reel_stopped') onReelStopped(msg.reel, msg.symbol);
     if (msg.type === 'all_stopped') {
       // Set status but defer overlay until all reels have visibly stopped.
