@@ -238,7 +238,8 @@ function connect(){
       // Set status but defer overlay until all reels have visibly stopped.
       allStoppedPending = true;
       setStatus("Composing prompt…");
-      setTimeout(showOverlay, 150);
+      showOverlay("Brewing your brainrot…","Composing prompt & generating image.")
+      //setTimeout(showOverlay, 150);
       return;
     }
     if (msg.type === 'image_ready') {
