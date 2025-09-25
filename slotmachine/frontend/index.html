@@ -191,10 +191,11 @@ let allStoppedPending = false;
 // the server has sent an `all_stopped` event, this will reveal the
 // loading overlay and reset the flag.
 function maybeShowOverlay(){
-  if (allStoppedPending && spinning.every(v => !v)){
-    showOverlay("Brewing your brainrot…","Composing prompt & generating image.");
-    allStoppedPending = false;
-  }
+  showOverlay("Brewing your brainrot…","Composing prompt & generating image.");
+  // if (allStoppedPending && spinning.every(v => !v)){
+  //   showOverlay("Brewing your brainrot…","Composing prompt & generating image.");
+  //   allStoppedPending = false;
+  // }
 }
 // Loading overlay helpers
 function showOverlay(title="Brewing your brainrot…", sub="Composing prompt & generating image.") {
