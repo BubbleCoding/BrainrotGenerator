@@ -33,10 +33,20 @@
   button:disabled { opacity:.5; cursor:not-allowed; }
 
   /* Loading overlay */
-  .loading-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.6); backdrop-filter: blur(3px); z-index:999; }
-  .loading-overlay.show { display:flex; }
-  .loading-card { min-width:320px; max-width:520px; padding:24px; border-radius:16px; background:linear-gradient(180deg,#0f1216,#0b0d10);
-                  box-shadow:0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.06); text-align:center; }
+  .loading-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); /* keep it simple, no blur */ z-index: 999;}  
+  .loading-overlay.show { display: flex; }
+  .loading-card {
+    min-width: 320px;
+    max-width: 520px;
+    padding: 24px;
+    border-radius: 16px;
+
+    /* simpler gradient + lighter shadow (no multiple inset shadows) */
+    background: linear-gradient(180deg, #101318, #0a0c0f);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
+  }
   .spinner { width:52px; height:52px; border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent); border-radius:50%; margin:0 auto 16px; animation:spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .progressbar { height:8px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:10px; }
