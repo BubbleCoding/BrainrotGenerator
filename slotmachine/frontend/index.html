@@ -157,6 +157,7 @@ function connect() {
       // DON'T show overlay yet; wait for the last reel's snap+badge to paint
       allStoppedPending = true;
       setStatus("Composing prompt…");
+      setTimeout(showOverlay, 150);
       return;
     }
 
