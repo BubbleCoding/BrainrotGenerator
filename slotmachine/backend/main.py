@@ -1,24 +1,10 @@
-import os, time, json, datetime, requests, asyncio
-from typing import Dict, Any, Set
+import os, time, json, hashlib, datetime, requests
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from starlette.websockets import WebSocketDisconnect
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# ---------------------------
-# GPIO setup
-# ---------------------------
-from gpiozero import Button, Device
-from gpiozero.pins.pigpio import PiGPIOFactory
-
-Device.pin_factory = PiGPIOFactory()   # force pigpio
-loop = asyncio.get_event_loop()        # single global loop
-
-# ---------------------------
-# OpenAI setup
-# ---------------------------
 load_dotenv()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
@@ -56,9 +42,6 @@ state = {
 
 app = FastAPI()
 
-# ---------------------------
-# Static routes
-# ---------------------------
 @app.get("/", include_in_schema=False)
 def index():
     return FileResponse("frontend/index.html")
@@ -77,27 +60,54 @@ def gallery_manifest():
     with open(path,"r",encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
-# ---------------------------
-# WS broadcast & clients
-# ---------------------------
-clients: Set[WebSocket] = set()
-_clients_lock = asyncio.Lock()
+clients = set()
 
 async def broadcast(payload: dict):
     dead = set()
-    async with _clients_lock:
-        for ws in list(clients):
-            try:
-                await ws.send_text(json.dumps(payload))
-            except Exception:
-                dead.add(ws)
-        clients.difference_update(dead)
+    for ws in list(clients):
+        try:
+            await ws.send_text(json.dumps(payload))
+        except Exception:
+            dead.add(ws)
+    clients.difference_update(dead)
 
-# ---------------------------
-# Prompt & image generation
-# ---------------------------
-def generate_prompt_and_name(animal: str, fruit: str, obj: str, retries: int = 3):
-    user_block = f"Animal: {animal}\\Fruit: {fruit}\\nObject: {obj}\\n"
+# -----------------------------------------------------------------------------
+# GPIO integration: physical buttons send gpio_press to clients
+try:
+    import asyncio
+    from gpiozero import Button, Device       # type: ignore
+    from gpiozero.pins.pigpio import PiGPIOFactory  # type: ignore
+
+    try:
+        Device.pin_factory = PiGPIOFactory()
+    except Exception:
+        pass
+
+    loop = asyncio.get_event_loop()
+
+    def gpio_emit(index: int):
+        print(f"[GPIO] Physical button pressed for reel {index}")
+        asyncio.run_coroutine_threadsafe(
+            broadcast({"type":"gpio_press","reel": index}),
+            loop
+        )
+
+    btn_gpio_map = { 23:0, 27:1, 22:2 }
+    buttons = []
+    for pin, idx in btn_gpio_map.items():
+        try:
+            b = Button(pin, pull_up=True, bounce_time=0.05)
+            b.when_pressed = lambda idx=idx: gpio_emit(idx)
+            buttons.append(b)
+        except Exception as e:
+            print(f"[GPIO] Failed to initialize Button on GPIO {pin}: {e}")
+
+except ImportError:
+    print("[GPIO] gpiozero or pigpio not available; GPIO buttons disabled.")
+
+def generate_prompt_and_name(animal: str, fruit: str, object: str, retries: int = 3):
+    user_block = f"Animal: {animal}\\Fruit: {fruit}\\nObject: {object}\\n"
+    last_err = None
     for attempt in range(1, retries+1):
         try:
             r = cli.chat.completions.create(
@@ -117,9 +127,12 @@ def generate_prompt_and_name(animal: str, fruit: str, obj: str, retries: int = 3
             data = json.loads(content)
             return data["italian_name"].strip(), data["prompt"].strip()
         except Exception as e:
-            if attempt == retries:
-                raise
-            time.sleep(min(2**attempt, 10))
+            last_err = e
+            if attempt < retries:
+                time.sleep(min(2 ** attempt, 10))
+            else:
+                raise RuntimeError(f"Prompt generation failed: {e}") from e
+    raise RuntimeError(f"Unexpected: {last_err}")
 
 def generate_image(prompt: str) -> str:
     resp = cli.images.generate(
@@ -131,6 +144,8 @@ def generate_image(prompt: str) -> str:
         n=1,
     )
     url = resp.data[0].url
+    if not url:
+        raise RuntimeError("No image URL from Images API.")
     r = requests.get(url, timeout=60); r.raise_for_status()
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     fname = f"slot_{ts}.png"
@@ -139,59 +154,17 @@ def generate_image(prompt: str) -> str:
     with open(fpath,"wb") as f: f.write(r.content)
     return fpath
 
-# ---------------------------
-# Shared input handler
-# ---------------------------
-async def handle_input(data: Dict[str, Any]):
-    if data.get("type") == "stop_reel":
-        idx = int(data["reel"])
-        if 0 <= idx < 3 and state["spinning"][idx]:
-            sym = data.get("symbol")
-            items = REELS[idx]
-            if sym in items:
-                symbol = sym
-            else:
-                t = time.time_ns()
-                seed = (state.get("session_seed", 0) or 0) ^ (idx*7919) ^ (t & 0xFFFFFFFF)
-                symbol = items[seed % len(items)]
-            state["spinning"][idx] = False
-            state["result"][idx] = symbol
-            await broadcast({"type":"reel_stopped","reel":idx,"symbol":symbol})
-            if all(not s for s in state["spinning"]):
-                await broadcast({"type":"all_stopped","result":state["result"]})
-                try:
-                    animal, fruit, obj = state["result"]
-                    italian_name, dalle_prompt = generate_prompt_and_name("Player", animal, fruit or obj)
-                    img_path = generate_image(dalle_prompt)
-                    url = "/static/generated/" + os.path.basename(img_path)
-                    entry = {
-                        "url": url,
-                        "italian_name": italian_name,
-                        "prompt": dalle_prompt,
-                        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                    with open(os.path.join("frontend","generated","manifest.jsonl"),"a",encoding="utf-8") as mf:
-                        mf.write(json.dumps(entry)+"\n")
-                    await broadcast({"type":"image_ready","url":url,"prompt":dalle_prompt,"italian_name":italian_name})
-                except Exception as e:
-                    await broadcast({"type":"error","message":str(e)})
-    elif data.get("type") == "reset":
-        state["spinning"] = [True, True, True]
-        state["result"] = [None, None, None]
-        state["session_seed"] = 0
-        await broadcast({"type":"reset_ok"})
+from starlette.websockets import WebSocketDisconnect
 
-# ---------------------------
-# WebSocket endpoint
-# ---------------------------
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
-    async with _clients_lock:
-        clients.add(ws)
+    clients.add(ws)
+
     state["spinning"] = [True, True, True]
     state["result"] = [None, None, None]
-    state["session_seed"] = int(time.time()*1000) % 1_000_000
+    state["session_seed"] = int(time.time() * 1000) % 1000000
+
     try:
         await ws.send_text(json.dumps({"type":"init","reels":REELS}))
         while True:
@@ -199,24 +172,48 @@ async def ws_endpoint(ws: WebSocket):
                 msg = await ws.receive_text()
             except WebSocketDisconnect:
                 break
-            await handle_input(json.loads(msg))
+            data = json.loads(msg)
+
+            if data.get("type") == "stop_reel":
+                idx = int(data["reel"])
+                if 0 <= idx < 3 and state["spinning"][idx]:
+                    sym = data.get("symbol")
+                    items = REELS[idx]
+                    if sym in items:
+                        symbol = sym
+                    else:
+                        t = time.time_ns()
+                        symbol = items[(t ^ (idx*7919)) % len(items)]
+                    state["spinning"][idx] = False
+                    state["result"][idx] = symbol
+                    await broadcast({"type":"reel_stopped","reel":idx,"symbol":symbol})
+
+                    if all(not s for s in state["spinning"]):
+                        await broadcast({"type":"all_stopped","result":state["result"]})
+                        try:
+                            animal, fruit, obj = state["result"]
+                            italian_name, dalle_prompt = generate_prompt_and_name(
+                                "Player", animal, fruit or obj
+                            )
+                            img_path = generate_image(dalle_prompt)
+                            url = "/static/generated/" + os.path.basename(img_path)
+                            entry = {
+                                "url": url,
+                                "italian_name": italian_name,
+                                "prompt": dalle_prompt,
+                                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
+                            manifest_path = os.path.join("frontend","generated","manifest.jsonl")
+                            with open(manifest_path,"a",encoding="utf-8") as mf:
+                                mf.write(json.dumps(entry)+"\n")
+                            await broadcast({"type":"image_ready","url":url,"prompt":dalle_prompt,"italian_name":italian_name})
+                        except Exception as e:
+                            await broadcast({"type":"error","message":str(e)})
+
+            elif data.get("type") == "reset":
+                state["spinning"] = [True, True, True]
+                state["result"] = [None, None, None]
+                state["session_seed"] = 0
+                await broadcast({"type":"reset_ok"})
     finally:
-        async with _clients_lock:
-            clients.discard(ws)
-
-# ---------------------------
-# GPIO buttons → broadcast only; browser decides symbol
-# ---------------------------
-def gpio_emit(i: int):
-    print(f"[GPIO] Pressed reel {i}")
-    asyncio.run_coroutine_threadsafe(broadcast({"type":"gpio_press","reel":i}), loop)
-
-btn23 = Button(23, pull_up=True, bounce_time=0.1)
-btn27 = Button(27, pull_up=True, bounce_time=0.1)
-btn22 = Button(22, pull_up=True, bounce_time=0.1)
-
-btn23.when_pressed = lambda: gpio_emit(0)
-btn27.when_pressed = lambda: gpio_emit(1)
-btn22.when_pressed = lambda: gpio_emit(2)
-
-print("[GPIO] Buttons active on BCM 23, 27, 22 (broadcasting gpio_press)")
+        clients.discard(ws)
