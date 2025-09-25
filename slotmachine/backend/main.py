@@ -1,7 +1,6 @@
 import os
 import time
 import json
-import hashlib
 import datetime
 import requests
 import asyncio
@@ -19,10 +18,16 @@ from openai import OpenAI
 # ---------------------------
 GPIO_AVAILABLE = False
 try:
-    from gpiozero import Button  # type: ignore
+    from gpiozero import Button, Device  # type: ignore
     GPIO_AVAILABLE = True
 except Exception:
     GPIO_AVAILABLE = False
+
+# Try to import PiGPIOFactory to force a stable backend
+try:
+    from gpiozero.pins.pigpio import PiGPIOFactory  # type: ignore
+except Exception:  # pragma: no cover
+    PiGPIOFactory = None  # type: ignore
 
 # ---------------------------
 # Env & OpenAI
@@ -96,7 +101,6 @@ async def broadcast(payload: dict):
     async with _clients_lock:
         for ws in list(clients):
             try:
-                # Frontend expects text JSON
                 await ws.send_text(json.dumps(payload))
             except Exception:
                 dead.add(ws)
@@ -107,7 +111,6 @@ async def broadcast(payload: dict):
 # Prompt & image generation
 # ---------------------------
 def generate_prompt_and_name(animal: str, fruit: str, object: str, retries: int = 3):
-    # NOTE: mirrors original behavior; do not change call sites without considering UX
     user_block = f"Animal: {animal}\\Fruit: {fruit}\\nObject: {object}\\n"
     last_err = None
     for attempt in range(1, retries+1):
@@ -160,43 +163,32 @@ def generate_image(prompt: str) -> str:
 # Shared input handler
 # ---------------------------
 async def handle_input(data: Dict[str, Any]):
-    """
-    Single entry point for actions, used by BOTH WebSocket messages and GPIO button presses.
-    Accepts the same messages your frontend sends (e.g., {"type":"stop_reel","reel":0,"symbol":"Cat"})
-    """
     msg_type = data.get("type")
 
     if msg_type == "stop_reel":
         idx = int(data["reel"])
         if 0 <= idx < 3 and state["spinning"][idx]:
-
-            # If a symbol is provided by the client, prefer it (current UI behavior).
             sym = data.get("symbol")
             items = REELS[idx]
             if sym in items:
                 symbol = sym
             else:
-                # GPIO path or invalid symbol: choose deterministically from time & seed
                 t = time.time_ns()
                 seed = (state.get("session_seed", 0) or 0) ^ (idx * 7919) ^ (t & 0xFFFFFFFF)
                 symbol = items[seed % len(items)]
-
             state["spinning"][idx] = False
             state["result"][idx] = symbol
             await broadcast({"type": "reel_stopped", "reel": idx, "symbol": symbol})
 
-            # If all reels have stopped, trigger prompt + image pipeline
             if all(not s for s in state["spinning"]):
                 await broadcast({"type": "all_stopped", "result": state["result"]})
                 try:
                     animal, fruit, obj = state["result"]
-                    # Preserve original "animal + (fruit or object)" behavior
                     italian_name, dalle_prompt = generate_prompt_and_name(
                         "Player", animal, fruit or obj
                     )
                     img_path = generate_image(dalle_prompt)
                     url = "/static/generated/" + os.path.basename(img_path)
-
                     entry = {
                         "url": url,
                         "italian_name": italian_name,
@@ -205,12 +197,10 @@ async def handle_input(data: Dict[str, Any]):
                     }
                     manifest_path = os.path.join("frontend","generated","manifest.jsonl")
                     with open(manifest_path,"a",encoding="utf-8") as mf:
-                        mf.write(json.dumps(entry) + "\\n")
-
-                    await broadcast({"type": "image_ready", "url": url, "prompt": dalle_prompt, "italian_name": italian_name})
+                        mf.write(json.dumps(entry) + "\n")
+                    await broadcast({"type": "image_ready","url":url,"prompt":dalle_prompt,"italian_name":italian_name})
                 except Exception as e:
-                    await broadcast({"type": "error", "message": str(e)})
-
+                    await broadcast({"type":"error","message":str(e)})
     elif msg_type == "reset":
         state["spinning"] = [True, True, True]
         state["result"] = [None, None, None]
@@ -226,7 +216,6 @@ async def ws_endpoint(ws: WebSocket):
     async with _clients_lock:
         clients.add(ws)
 
-    # reset state on new connection
     state["spinning"] = [True, True, True]
     state["result"] = [None, None, None]
     state["session_seed"] = int(time.time() * 1000) % 1_000_000
@@ -240,7 +229,6 @@ async def ws_endpoint(ws: WebSocket):
                 break
             data = json.loads(msg)
             await handle_input(data)
-
     finally:
         async with _clients_lock:
             clients.discard(ws)
@@ -250,36 +238,41 @@ async def ws_endpoint(ws: WebSocket):
 # ---------------------------
 @app.on_event("startup")
 async def gpio_startup():
-    """
-    If running on a Pi with gpiozero installed, attach three buttons to the shared handler.
-    Wiring (BCM): 23 -> LEFT (reel 0), 27 -> MIDDLE (reel 1), 22 -> RIGHT (reel 2)
-    Buttons wired to GND with internal pull-ups.
-    """
     if not GPIO_AVAILABLE:
+        print("[GPIO] gpiozero not available; skipping GPIO setup.")
         return
 
-    # Grab the running loop to schedule coroutines thread-safely from gpiozero callbacks
+    if PiGPIOFactory is not None:
+        try:
+            Device.pin_factory = PiGPIOFactory()
+            print("[GPIO] Using pin factory:", type(Device.pin_factory).__name__)
+        except Exception as e:
+            print("[GPIO] Failed to set PiGPIOFactory:", e)
+    else:
+        print("[GPIO] PiGPIOFactory not importable; using default pin factory.")
+
     loop = asyncio.get_running_loop()
 
-    # Debounce a bit to avoid double fires
     left_btn   = Button(23, pull_up=True, bounce_time=0.1)
     middle_btn = Button(27, pull_up=True, bounce_time=0.1)
     right_btn  = Button(22, pull_up=True, bounce_time=0.1)
 
-    def schedule(data: Dict[str, Any]):
-        asyncio.run_coroutine_threadsafe(handle_input(data), loop)
+    def schedule(payload):
+        asyncio.run_coroutine_threadsafe(broadcast({"type":"debug","msg":payload}), loop)
+        asyncio.run_coroutine_threadsafe(handle_input(payload), loop)
 
     def on_left():
-        schedule({"type": "stop_reel", "reel": 0})
+        print("[GPIO] LEFT pressed (GPIO23)")
+        schedule({"type":"stop_reel","reel":0})
     def on_middle():
-        schedule({"type": "stop_reel", "reel": 1})
+        print("[GPIO] MIDDLE pressed (GPIO27)")
+        schedule({"type":"stop_reel","reel":1})
     def on_right():
-        schedule({"type": "stop_reel", "reel": 2})
+        print("[GPIO] RIGHT pressed (GPIO22)")
+        schedule({"type":"stop_reel","reel":2})
 
     left_btn.when_pressed = on_left
     middle_btn.when_pressed = on_middle
     right_btn.when_pressed = on_right
 
-    print("[GPIO] Buttons active on pins 17, 27, 22 (pull-up to 3.3V; press to GND).")
-
-# Note: uvicorn launched externally (systemd or CLI). No __main__ block necessary.
+    print("[GPIO] Buttons active on BCM 23, 27, 22 (other leg to any GND).")
