@@ -220,6 +220,7 @@ function connect(){
     // a stop_reel command just like a click. This ensures that the spinning
     // state and UI are updated consistently when using GPIO buttons.
     if (msg.type === 'gpio_press') {
+      printf("GPIO press on reel %d", msg.reel);
       stopReel(msg.reel);
     }
     if (msg.type === 'reel_stopped') onReelStopped(msg.reel, msg.symbol);

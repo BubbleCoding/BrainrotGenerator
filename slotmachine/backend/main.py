@@ -187,7 +187,6 @@ async def ws_endpoint(ws: WebSocket):
                     state["spinning"][idx] = False
                     state["result"][idx] = symbol
                     await broadcast({"type":"reel_stopped","reel":idx,"symbol":symbol})
-
                     if all(not s for s in state["spinning"]):
                         await broadcast({"type":"all_stopped","result":state["result"]})
                         try:
