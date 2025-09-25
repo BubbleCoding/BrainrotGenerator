@@ -197,13 +197,14 @@ function maybeShowOverlay(){
   }
 }
 // Loading overlay helpers
-function showOverlay(title="Working…", sub="Composing prompt & generating your brainrot."){
+function showOverlay(title="Brewing your brainrot…", sub="Composing prompt & generating image.") {
   const o = document.getElementById('loadingOverlay');
   document.getElementById('loadingTitle').textContent = title;
   document.getElementById('loadingSub').textContent = sub;
   o.classList.add('show');
   o.setAttribute('aria-hidden', 'false');
 }
+
 function hideOverlay(){
   const o = document.getElementById('loadingOverlay');
   o.classList.remove('show');
@@ -224,11 +225,13 @@ function connect(){
     if (msg.type === 'reel_stopped') onReelStopped(msg.reel, msg.symbol);
     if (msg.type === 'all_stopped') {
       // Set status but defer overlay until all reels have visibly stopped.
-      setStatus("Composing prompt…");
       allStoppedPending = true;
+      setStatus("Composing prompt…");
+      setTimeout(showOverlay, 150);
+      return;
     }
     if (msg.type === 'image_ready') {
-      setStatus("Image ready!");
+      //setStatus("Image ready!");
       hideOverlay();
       window.location.href = "/gallery.html?url=" + encodeURIComponent(msg.url)
                            + "&name=" + encodeURIComponent(msg.italian_name)
