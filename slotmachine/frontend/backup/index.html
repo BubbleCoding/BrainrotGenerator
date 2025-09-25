@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta charset="utf-8"/>
@@ -16,7 +15,7 @@
     .scene { width:100%; height:100%; perspective: 1000px; perspective-origin: 50% 50%; position:relative; }
     .cyl { width:100%; height:100%; position:absolute; inset:0; transform-style: preserve-3d; will-change: transform; }
     .panel { position:absolute; top:50%; left:50%; width:86%; height:92px; margin-left:-43%; margin-top:-46px;
-             display:flex; align-items:center; justify-content:center; font-size:48px; text-shadow:0 2px 2px rgba(0,0,0,.3);
+             display:flex; align-items:center; justify-content:center; font-size:clamp(10px,2vw,48px); text-shadow:0 2px 2px rgba(0,0,0,.3);
              color:#eaeaea; backface-visibility: hidden; user-select:none; }
     .reel::after { content:""; position:absolute; left:0; right:0; top:50%; height:0; border-top:2px solid var(--accent);
                    opacity:.5; transform: translateY(-1px); pointer-events:none; z-index:5; }
@@ -29,15 +28,10 @@
     button.primary { background:var(--accent); color:#001018; font-weight:800; }
     button:disabled { opacity:.5; cursor:not-allowed; }
   
-
 /* === POLISH PACK v1 === */
 /* Theme */
-:root {
-  --accent: #5cf;
-}
-body {
-  background: radial-gradient(circle at center, #111 0%, #000 100%);
-}
+:root { --accent: #5cf; }
+body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
 /* Reel chrome/glass */
 .reel {
   border: 2px solid #444;
@@ -69,11 +63,7 @@ body {
   opacity: 0;
   transition: transform .18s ease, opacity .18s ease;
 }
-.stopBadge.show {
-  display:block !important;
-  transform: scale(1);
-  opacity: 1;
-}
+.stopBadge.show { display:block !important; transform: scale(1); opacity: 1; }
 /* Lever */
 .lever {
   display:inline-block; margin-left:12px;
@@ -92,28 +82,98 @@ body {
   .fadeMask::after { animation: none; opacity: .35; }
 }
 /* === END POLISH PACK === */
+
+/* === LOADING OVERLAY === */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(3px);
+  z-index: 999;
+}
+.loading-overlay.show { display: flex; }
+.loading-card {
+  min-width: 320px;
+  max-width: 520px;
+  padding: 24px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #0f1216, #0b0d10);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.06);
+  text-align: center;
+}
+.spinner {
+  width: 52px; height: 52px;
+  border: 5px solid rgba(255,255,255,0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  margin: 0 auto 16px auto;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.progressbar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.progressbar > div {
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: slide 1.2s ease-in-out infinite;
+}
+@keyframes slide {
+  0%   { margin-left: -40%; width: 20%; }
+  50%  { margin-left: 20%;  width: 60%; }
+  100% { margin-left: 100%; width: 20%; }
+}
+.loading-title { font-weight: 800; font-size: 22px; margin-bottom: 4px; }
+.loading-sub { opacity: .85; font-size: 14px; }
+.hint { font-size: 12px; opacity: .6; margin-top: 8px; }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&amp;display=swap" rel="stylesheet"/></head>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet"/></head>
 <body>
 <header>
-<h1>🎰 Slot Machine Brainrot — 3D (You pick!)</h1>
-<div class="status" id="status">Stop each reel with the symbol you want on the payline.</div>
+  <!-- <h1>🎰 Slot Machine Brainrot — 3D (You pick!)</h1> -->
+  <div class="status" id="status">Stop each reel with the symbol you want on the payline.</div>
 </header>
+
+<!-- SLOT UI -->
 <div class="wrap">
-<div class="reel"><div class="scene"><div class="cyl" id="cyl0"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb0">Stopped</div></div>
-<div class="reel"><div class="scene"><div class="cyl" id="cyl1"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb1">Stopped</div></div>
-<div class="reel"><div class="scene"><div class="cyl" id="cyl2"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb2">Stopped</div></div>
+  <div class="reel"><div class="scene"><div class="cyl" id="cyl0"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb0">Stopped</div></div>
+  <div class="reel"><div class="scene"><div class="cyl" id="cyl1"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb1">Stopped</div></div>
+  <div class="reel"><div class="scene"><div class="cyl" id="cyl2"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb2">Stopped</div></div>
 </div>
+
 <footer class="controls">
-<button onclick="stopReel(0)">Stop A</button>
-<button onclick="stopReel(1)">Stop B</button>
-<button onclick="stopReel(2)">Stop C</button>
-<button class="primary" disabled="" id="resetBtn" onclick="resetAll()">Reset</button>
-<button class="primary" onclick="window.location.href='/gallery.html'">📸 View Gallery</button>
-<div class="lever" onclick="pullLever()"></div></footer>
+  <button onclick="stopReel(0)">Stop A</button>
+  <button onclick="stopReel(1)">Stop B</button>
+  <button onclick="stopReel(2)">Stop C</button>
+  <button class="primary" id="resetBtn" onclick="resetAll()">Reset</button>
+  <button class="primary" onclick="window.location.href='/gallery.html'">📸 View Gallery</button>
+  <!-- <div class="lever" onclick="pullLever()"></div> -->
+</footer>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" class="loading-overlay" aria-hidden="true">
+  <div class="loading-card" role="dialog" aria-live="polite">
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="loading-title" id="loadingTitle">Working…</div>
+    <div class="loading-sub" id="loadingSub">Composing prompt & generating your brainrot.</div>
+    <div class="progressbar"><div></div></div>
+    <div class="hint">This might take a moment if the image model is busy.</div>
+  </div>
+</div>
+
 <script>
 const ROW_H = 92;
-const ROT_SPEEDS = [0.05, 0.05, 0.05]; // deg/ms
+const ROT_SPEEDS = [0.025, 0.025, 0.025]; // deg/ms
 let ws;
 let reels = [[],[],[]];
 let spinning = [true,true,true];
@@ -122,21 +182,47 @@ let lastTS = performance.now();
 let cylEls = [];
 let badgeEls = [];
 
+// Loading overlay helpers
+function showOverlay(title="Working…", sub="Composing prompt & generating your brainrot."){
+  const o = document.getElementById('loadingOverlay');
+  document.getElementById('loadingTitle').textContent = title;
+  document.getElementById('loadingSub').textContent = sub;
+  o.classList.add('show');
+  o.setAttribute('aria-hidden', 'false');
+}
+function hideOverlay(){
+  const o = document.getElementById('loadingOverlay');
+  o.classList.remove('show');
+  o.setAttribute('aria-hidden', 'true');
+}
+
 function connect(){
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = (ev)=>{
     const msg = JSON.parse(ev.data);
     if (msg.type === 'init') initUI(msg.reels);
     if (msg.type === 'reel_stopped') onReelStopped(msg.reel, msg.symbol);
-    if (msg.type === 'all_stopped') setStatus("Composing prompt…");
+    if (msg.type === 'all_stopped') {
+      setStatus("Composing prompt…");
+      showOverlay("Brewing your brainrot…","Composing prompt & generating image.");
+    }
     if (msg.type === 'image_ready') {
+      setStatus("Image ready!");
+      hideOverlay();
       window.location.href = "/gallery.html?url=" + encodeURIComponent(msg.url)
                            + "&name=" + encodeURIComponent(msg.italian_name)
                            + "&prompt=" + encodeURIComponent(msg.prompt);
     }
-    if (msg.type === 'error') setStatus("⚠️ " + msg.message);
+    if (msg.type === 'error') {
+      hideOverlay();
+      setStatus("⚠️ " + msg.message);
+    }
   };
-  ws.onclose = ()=>{ setStatus("Disconnected. Reconnecting…"); setTimeout(connect, 800); };
+  ws.onclose = ()=>{
+    setStatus("Disconnected. Reconnecting…");
+    hideOverlay();
+    setTimeout(connect, 800);
+  };
 }
 function setStatus(s){ document.getElementById('status').textContent = s; }
 function buildCylinder(i){
@@ -172,7 +258,6 @@ function currentSymbol(i){
   const list = reels[i];
   const n = list.length;
   const step = 360 / n;
-  // panel idx at front when rotX = -idx*step. Compute nearest index.
   const idx = Math.round((-rotX[i]) / step) % n;
   const wrapped = (idx + n) % n;
   return list[wrapped];
@@ -183,28 +268,33 @@ function stopReel(i){
   const symbol = currentSymbol(i);
   ws.send(JSON.stringify({type:"stop_reel", reel:i, symbol}));
   setStatus(`Locked ${"ABC"[i]}: ${symbol}.`);
+  // If all three are stopped locally, disable stop buttons until reset
+  if (spinning.every(v=>!v)) {
+    document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
+  }
 }
-function onReelStopped(i,symbol){
+function onReelStopped(i,symbol){  // Deze komt wordt niet gebruikt na reset
   badgeEls[i].textContent = `Stopped: ${symbol}`;
   badgeEls[i].style.display='block';
-  // snap visually to exactly the chosen symbol
   const list = reels[i]; const idx = list.indexOf(symbol); if (idx<0) return;
   const step = 360 / list.length;
   rotX[i] = -idx * step;
   cylEls[i].style.transform = `rotateX(${rotX[i]}deg)`;
 }
 function resetAll(){
-  badgeEls.forEach(b=>{b.style.display='none'; b.textContent='Stopped';});
+  badgeEls.forEach(b=>{ b.classList.remove('show'); b.style.display='none'; b.textContent='Stopped';});
   spinning=[true,true,true];
   setStatus("Ready. Stop each reel with your chosen symbol.");
+  hideOverlay();
+  document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=false);
   if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:"reset"}));
 }
 connect();
 </script>
+
 <script>
 // === POLISH PACK JS v1 ===
 (function(){
-  // Microcopy flavor
   const FLAVOR = ["Nice pick!", "Two to go!", "Feeling lucky?", "Lock it in!", "Almost there!"];
   const oldSetStatus = window.setStatus;
   window.setStatus = function(msg){
@@ -216,14 +306,12 @@ connect();
     return oldSetStatus(msg);
   }
 
-  // Badge pop-in
   const origOnReelStopped = window.onReelStopped;
   window.onReelStopped = function(i, symbol){
     origOnReelStopped(i, symbol);
     const b = document.getElementById("sb"+i);
     if (b) b.classList.add("show");
 
-    // Overshoot + ease to snap
     try {
       const cyl = window.cylEls?.[i];
       const list = window.reels?.[i] || [];
@@ -249,14 +337,12 @@ connect();
     } catch(e){}
   }
 
-  // Lever to reset/spin all
   window.pullLever = function(){
     const btn = document.querySelector(".lever");
     if (btn){ btn.style.transform = "translateY(2px)"; setTimeout(()=>btn.style.transform="",120); }
     if (typeof window.resetAll === "function") window.resetAll();
   }
 
-  // Keyboard shortcuts: A/S/D stop, R reset
   window.addEventListener("keydown", (e)=>{
     const k = e.key.toLowerCase();
     if (k === "r") { e.preventDefault(); window.pullLever(); }
@@ -266,5 +352,6 @@ connect();
   });
 })();
 // === END POLISH PACK JS v1 ===
-</script></body>
+</script>
+</body>
 </html>

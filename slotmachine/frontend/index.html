@@ -140,7 +140,6 @@ body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet"/></head>
 <body>
 <header>
-  <!-- <h1>🎰 Slot Machine Brainrot — 3D (You pick!)</h1> -->
   <div class="status" id="status">Stop each reel with the symbol you want on the payline.</div>
 </header>
 
@@ -157,7 +156,6 @@ body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
   <button onclick="stopReel(2)">Stop C</button>
   <button class="primary" id="resetBtn" onclick="resetAll()">Reset</button>
   <button class="primary" onclick="window.location.href='/gallery.html'">📸 View Gallery</button>
-  <!-- <div class="lever" onclick="pullLever()"></div> -->
 </footer>
 
 <!-- LOADING OVERLAY -->
@@ -200,22 +198,42 @@ function connect(){
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = (ev)=>{
     const msg = JSON.parse(ev.data);
-    if (msg.type === 'init') initUI(msg.reels);
-    if (msg.type === 'reel_stopped') onReelStopped(msg.reel, msg.symbol);
+
+    if (msg.type === 'debug') {
+      console.log('[WS debug]', msg.msg);
+      return;
+    }
+
+    if (msg.type === 'init') {
+      initUI(msg.reels);
+      return;
+    }
+
+    if (msg.type === 'reel_stopped') {
+      // IMPORTANT: stop visual + mark spinning=false even when it didn't come from a click
+      onReelStopped(msg.reel, msg.symbol);
+      return;
+    }
+
     if (msg.type === 'all_stopped') {
       setStatus("Composing prompt…");
       showOverlay("Brewing your brainrot…","Composing prompt & generating image.");
+      return;
     }
+
     if (msg.type === 'image_ready') {
       setStatus("Image ready!");
       hideOverlay();
       window.location.href = "/gallery.html?url=" + encodeURIComponent(msg.url)
                            + "&name=" + encodeURIComponent(msg.italian_name)
                            + "&prompt=" + encodeURIComponent(msg.prompt);
+      return;
     }
+
     if (msg.type === 'error') {
       hideOverlay();
       setStatus("⚠️ " + msg.message);
+      return;
     }
   };
   ws.onclose = ()=>{
@@ -243,6 +261,7 @@ function initUI(reelData){
   cylEls = [document.getElementById('cyl0'), document.getElementById('cyl1'), document.getElementById('cyl2')];
   badgeEls = [document.getElementById('sb0'), document.getElementById('sb1'), document.getElementById('sb2')];
   for (let i=0;i<3;i++) buildCylinder(i);
+  spinning = [true,true,true];
   lastTS = performance.now(); requestAnimationFrame(tick);
 }
 function tick(now){
@@ -268,18 +287,42 @@ function stopReel(i){
   const symbol = currentSymbol(i);
   ws.send(JSON.stringify({type:"stop_reel", reel:i, symbol}));
   setStatus(`Locked ${"ABC"[i]}: ${symbol}.`);
-  // If all three are stopped locally, disable stop buttons until reset
   if (spinning.every(v=>!v)) {
     document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
   }
 }
-function onReelStopped(i,symbol){  // Deze komt wordt niet gebruikt na reset
+function onReelStopped(i,symbol){
+  // <<< NEW: ensure the reel visually stops even from GPIO path >>>
+  spinning[i] = false;
+
   badgeEls[i].textContent = `Stopped: ${symbol}`;
   badgeEls[i].style.display='block';
+
   const list = reels[i]; const idx = list.indexOf(symbol); if (idx<0) return;
   const step = 360 / list.length;
-  rotX[i] = -idx * step;
-  cylEls[i].style.transform = `rotateX(${rotX[i]}deg)`;
+  const target = -idx * step;
+
+  // Smooth snap animation to target
+  const cyl = cylEls[i];
+  const start = rotX[i];
+  const frames = 18;
+  let f = 0;
+  function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
+  (function anim(){
+    f++;
+    const t = Math.min(f/frames, 1);
+    const e = easeOutCubic(t);
+    const val = start + (target - start) * e;
+    rotX[i] = val;
+    cyl.style.transform = `rotateX(${val}deg)`;
+    if (f < frames) requestAnimationFrame(anim);
+    else { rotX[i] = target; cyl.style.transform = `rotateX(${target}deg)`; }
+  })();
+
+  // Disable buttons when all three are stopped (also covers GPIO path)
+  if (spinning.every(v=>!v)) {
+    document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
+  }
 }
 function resetAll(){
   badgeEls.forEach(b=>{ b.classList.remove('show'); b.style.display='none'; b.textContent='Stopped';});
@@ -308,33 +351,10 @@ connect();
 
   const origOnReelStopped = window.onReelStopped;
   window.onReelStopped = function(i, symbol){
+    // Keep the enhanced animation, but don't reflip spinning here (already handled above)
     origOnReelStopped(i, symbol);
     const b = document.getElementById("sb"+i);
     if (b) b.classList.add("show");
-
-    try {
-      const cyl = window.cylEls?.[i];
-      const list = window.reels?.[i] || [];
-      const idx = list.indexOf(symbol);
-      if (!cyl || idx<0) return;
-      const step = 360 / list.length;
-      const current = window.rotX?.[i] || 0;
-      const target = -idx * step;
-      const overshoot = 8;
-      const frames = 18;
-      let f = 0;
-      function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
-      (function anim(){
-        f++;
-        const t = Math.min(f/frames, 1);
-        const e = easeOutCubic(t);
-        const val = current + (target - current + (t<1 ? overshoot : 0)) * e;
-        window.rotX[i] = val;
-        cyl.style.transform = `rotateX(${val}deg)`;
-        if (f < frames) requestAnimationFrame(anim);
-        else { window.rotX[i] = target; cyl.style.transform = `rotateX(${target}deg)`; }
-      })();
-    } catch(e){}
   }
 
   window.pullLever = function(){
