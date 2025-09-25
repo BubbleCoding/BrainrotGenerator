@@ -4,146 +4,37 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>Slot Machine UI — 3D Cylinder (User Choice)</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet"/>
 <style>
-    :root { --accent:#5cf; --bg:#0a0a0a; --panel:#111; }
-    html, body { height:100%; }
-    body { margin:0; background:var(--bg); color:#eaeaea; font-family:ui-sans-serif, system-ui, -apple-system; }
-    header { text-align:center; padding:24px 12px; font-weight:600; letter-spacing:.5px; }
-    .status { text-align:center; padding:8px; min-height:24px; opacity:.9; }
-    .wrap { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; height:calc(100vh - 190px); padding:24px; box-sizing:border-box; }
-    .reel { position:relative; border:4px solid #1a1a1a; border-radius:24px; background:var(--panel); box-shadow:0 0 40px #000 inset; overflow:hidden; }
-    .scene { width:100%; height:100%; perspective: 1000px; perspective-origin: 50% 50%; position:relative; }
-    .cyl { width:100%; height:100%; position:absolute; inset:0; transform-style: preserve-3d; will-change: transform; }
-    .panel { position:absolute; top:50%; left:50%; width:86%; height:92px; margin-left:-43%; margin-top:-46px;
-             display:flex; align-items:center; justify-content:center; font-size:clamp(10px,2vw,48px); text-shadow:0 2px 2px rgba(0,0,0,.3);
-             color:#eaeaea; backface-visibility: hidden; user-select:none; }
-    .reel::after { content:""; position:absolute; left:0; right:0; top:50%; height:0; border-top:2px solid var(--accent);
-                   opacity:.5; transform: translateY(-1px); pointer-events:none; z-index:5; }
-    .fadeMask { position:absolute; inset:0; pointer-events:none; z-index:4;
-                background: linear-gradient(to bottom, rgba(10,10,10,0.95), rgba(10,10,10,0.0) 20%, rgba(10,10,10,0.0) 80%, rgba(10,10,10,0.95)); }
-    .stopBadge { position:absolute; bottom:16px; right:16px; background:#1c1; color:#012; font-weight:800;
-                 padding:8px 12px; border-radius:12px; display:none; z-index:6; }
-    footer.controls { display:flex; gap:16px; justify-content:center; padding:16px; flex-wrap:wrap; }
-    button { font-size:22px; padding:16px 24px; border-radius:12px; border:none; background:#1a1a1a; color:#fff; cursor:pointer; }
-    button.primary { background:var(--accent); color:#001018; font-weight:800; }
-    button:disabled { opacity:.5; cursor:not-allowed; }
-  
-/* === POLISH PACK v1 === */
-/* Theme */
-:root { --accent: #5cf; }
-body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
-/* Reel chrome/glass */
-.reel {
-  border: 2px solid #444;
-  box-shadow: inset 0 2px 6px rgba(255,255,255,0.08), inset 0 -3px 10px rgba(0,0,0,0.6), 0 10px 24px rgba(0,0,0,0.35);
-  background: linear-gradient(to bottom,#1a1a1a,#0f0f0f);
-  border-radius: 16px;
-  overflow: hidden;
-}
-/* Center payline glow */
-.fadeMask::after {
-  content:"";
-  position:absolute; left:0; right:0; top:50%;
-  height:2px; transform:translateY(-1px);
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  filter: drop-shadow(0 0 6px var(--accent));
-  opacity:.6; animation: pulse 2.2s ease-in-out infinite;
-}
-@keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:.9} }
-/* Typography for symbols */
-.cyl div {
-  font-family: 'Orbitron', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  line-height: 1.25;
-}
-/* Stop badges pop */
-.stopBadge {
-  transform: scale(0.8);
-  opacity: 0;
-  transition: transform .18s ease, opacity .18s ease;
-}
-.stopBadge.show { display:block !important; transform: scale(1); opacity: 1; }
-/* Lever */
-.lever {
-  display:inline-block; margin-left:12px;
-  width:60px; height:120px; position:relative; vertical-align:middle;
-  background: linear-gradient(#5a5a5a,#2a2a2a);
-  border:3px solid #888; border-radius:30px;
-  box-shadow: 0 6px 18px rgba(0,0,0,.45);
-  cursor:pointer;
-}
-.lever::after {
-  content:""; position:absolute; top:-18px; left:50%; transform:translateX(-50%);
-  width:20px; height:20px; border-radius:50%;
-  background: var(--accent); box-shadow:0 0 10px var(--accent), inset 0 0 6px rgba(255,255,255,.6);
-}
-@media (prefers-reduced-motion: reduce){
-  .fadeMask::after { animation: none; opacity: .35; }
-}
-/* === END POLISH PACK === */
+  :root { --accent:#5cf; --bg:#0a0a0a; --panel:#111; }
+  html, body { height:100%; }
+  body { margin:0; background: radial-gradient(circle at center, #111 0%, #000 100%); color:#eaeaea; font-family:ui-sans-serif, system-ui, -apple-system; }
+  header { text-align:center; padding:24px 12px; font-weight:600; letter-spacing:.5px; }
+  .status { text-align:center; padding:8px; min-height:24px; opacity:.9; }
+  .wrap { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; height:calc(100vh - 190px); padding:24px; box-sizing:border-box; }
+  .reel { position:relative; border:2px solid #444; border-radius:16px; background:linear-gradient(to bottom,#1a1a1a,#0f0f0f); box-shadow:inset 0 2px 6px rgba(255,255,255,.08), inset 0 -3px 10px rgba(0,0,0,.6), 0 10px 24px rgba(0,0,0,.35); overflow:hidden; }
+  .scene { width:100%; height:100%; perspective:1000px; perspective-origin:50% 50%; position:relative; }
+  .cyl { width:100%; height:100%; position:absolute; inset:0; transform-style:preserve-3d; will-change:transform; }
+  .panel { position:absolute; top:50%; left:50%; width:86%; height:92px; margin-left:-43%; margin-top:-46px; display:flex; align-items:center; justify-content:center; font-size:clamp(10px,2vw,48px); text-shadow:0 2px 2px rgba(0,0,0,.3); color:#eaeaea; backface-visibility:hidden; user-select:none; }
+  .reel::after { content:""; position:absolute; left:0; right:0; top:50%; height:0; border-top:2px solid var(--accent); opacity:.5; transform: translateY(-1px); pointer-events:none; z-index:5; }
+  .fadeMask { position:absolute; inset:0; pointer-events:none; z-index:4; background:linear-gradient(to bottom, rgba(10,10,10,.95), rgba(10,10,10,0) 20%, rgba(10,10,10,0) 80%, rgba(10,10,10,.95)); }
+  .stopBadge { position:absolute; bottom:16px; right:16px; background:#1c1; color:#012; font-weight:800; padding:8px 12px; border-radius:12px; display:none; z-index:6; transform:scale(.8); opacity:0; transition:transform .18s ease, opacity .18s ease; }
+  .stopBadge.show { display:block !important; transform:scale(1); opacity:1; }
 
-/* === LOADING OVERLAY === */
-.loading-overlay {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(3px);
-  z-index: 999;
-}
-.loading-overlay.show { display: flex; }
-.loading-card {
-  min-width: 320px;
-  max-width: 520px;
-  padding: 24px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #0f1216, #0b0d10);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.06);
-  text-align: center;
-}
-.spinner {
-  width: 52px; height: 52px;
-  border: 5px solid rgba(255,255,255,0.15);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  margin: 0 auto 16px auto;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.progressbar {
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  overflow: hidden;
-  margin-top: 10px;
-}
-.progressbar > div {
-  width: 40%;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  animation: slide 1.2s ease-in-out infinite;
-}
-@keyframes slide {
-  0%   { margin-left: -40%; width: 20%; }
-  50%  { margin-left: 20%;  width: 60%; }
-  100% { margin-left: 100%; width: 20%; }
-}
-.loading-title { font-weight: 800; font-size: 22px; margin-bottom: 4px; }
-.loading-sub { opacity: .85; font-size: 14px; }
-.hint { font-size: 12px; opacity: .6; margin-top: 8px; }
+  /* Loading overlay */
+  .loading-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.6); backdrop-filter: blur(3px); z-index:999; }
+  .loading-overlay.show { display:flex; }
+  .loading-card { min-width:320px; max-width:520px; padding:24px; border-radius:16px; background:linear-gradient(180deg,#0f1216,#0b0d10); box-shadow:0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.06); text-align:center; }
+  .spinner { width:52px; height:52px; border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent); border-radius:50%; margin:0 auto 16px; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progressbar { height:8px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:10px; }
+  .progressbar > div { width:40%; height:100%; border-radius:999px; background:linear-gradient(90deg, transparent, var(--accent), transparent); animation: slide 1.2s ease-in-out infinite; }
+  @keyframes slide { 0%{margin-left:-40%;width:20%} 50%{margin-left:20%;width:60%} 100%{margin-left:100%;width:20%} }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet"/></head>
+</head>
 <body>
-<header>
-  <div class="status" id="status">Stop each reel with the symbol you want on the payline.</div>
-</header>
+<header><div class="status" id="status">Stop each reel with the symbol you want on the payline.</div></header>
 
-<!-- SLOT UI -->
 <div class="wrap">
   <div class="reel"><div class="scene"><div class="cyl" id="cyl0"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb0">Stopped</div></div>
   <div class="reel"><div class="scene"><div class="cyl" id="cyl1"></div></div><div class="fadeMask"></div><div class="stopBadge" id="sb1">Stopped</div></div>
@@ -158,14 +49,12 @@ body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
   <button class="primary" onclick="window.location.href='/gallery.html'">📸 View Gallery</button>
 </footer>
 
-<!-- LOADING OVERLAY -->
 <div id="loadingOverlay" class="loading-overlay" aria-hidden="true">
   <div class="loading-card" role="dialog" aria-live="polite">
     <div class="spinner" aria-hidden="true"></div>
     <div class="loading-title" id="loadingTitle">Working…</div>
     <div class="loading-sub" id="loadingSub">Composing prompt & generating your brainrot.</div>
     <div class="progressbar"><div></div></div>
-    <div class="hint">This might take a moment if the image model is busy.</div>
   </div>
 </div>
 
@@ -180,69 +69,40 @@ let lastTS = performance.now();
 let cylEls = [];
 let badgeEls = [];
 
-// Loading overlay helpers
-function showOverlay(title="Working…", sub="Composing prompt & generating your brainrot."){
-  const o = document.getElementById('loadingOverlay');
-  document.getElementById('loadingTitle').textContent = title;
-  document.getElementById('loadingSub').textContent = sub;
-  o.classList.add('show');
-  o.setAttribute('aria-hidden', 'false');
-}
-function hideOverlay(){
-  const o = document.getElementById('loadingOverlay');
-  o.classList.remove('show');
-  o.setAttribute('aria-hidden', 'true');
-}
+function showOverlay(){ document.getElementById('loadingOverlay').classList.add('show'); }
+function hideOverlay(){ document.getElementById('loadingOverlay').classList.remove('show'); }
+function setStatus(s){ document.getElementById('status').textContent = s; }
 
 function connect(){
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = (ev)=>{
     const msg = JSON.parse(ev.data);
 
-    if (msg.type === 'debug') {
-      console.log('[WS debug]', msg.msg);
+    if (msg.type === 'init') { initUI(msg.reels); return; }
+
+    if (msg.type === 'gpio_press') {        // <<< GPIO press → client decides visible symbol
+      stopReelFromGPIO(msg.reel);
       return;
     }
 
-    if (msg.type === 'init') {
-      initUI(msg.reels);
-      return;
-    }
-
-    if (msg.type === 'reel_stopped') {
-      // IMPORTANT: stop visual + mark spinning=false even when it didn't come from a click
+    if (msg.type === 'reel_stopped') {      // server confirmation → minimal snap to that symbol
       onReelStopped(msg.reel, msg.symbol);
       return;
     }
 
-    if (msg.type === 'all_stopped') {
-      setStatus("Composing prompt…");
-      showOverlay("Brewing your brainrot…","Composing prompt & generating image.");
-      return;
-    }
-
+    if (msg.type === 'all_stopped') { showOverlay(); return; }
     if (msg.type === 'image_ready') {
-      setStatus("Image ready!");
       hideOverlay();
       window.location.href = "/gallery.html?url=" + encodeURIComponent(msg.url)
                            + "&name=" + encodeURIComponent(msg.italian_name)
                            + "&prompt=" + encodeURIComponent(msg.prompt);
       return;
     }
-
-    if (msg.type === 'error') {
-      hideOverlay();
-      setStatus("⚠️ " + msg.message);
-      return;
-    }
+    if (msg.type === 'error') { hideOverlay(); setStatus("⚠️ " + msg.message); return; }
   };
-  ws.onclose = ()=>{
-    setStatus("Disconnected. Reconnecting…");
-    hideOverlay();
-    setTimeout(connect, 800);
-  };
+  ws.onclose = ()=>{ hideOverlay(); setStatus("Disconnected. Reconnecting…"); setTimeout(connect, 800); };
 }
-function setStatus(s){ document.getElementById('status').textContent = s; }
+
 function buildCylinder(i){
   const cyl = document.getElementById(`cyl${i}`);
   cyl.innerHTML = "";
@@ -273,6 +133,7 @@ function tick(now){
   }
   requestAnimationFrame(tick);
 }
+
 function currentSymbol(i){
   const list = reels[i];
   const n = list.length;
@@ -281,62 +142,56 @@ function currentSymbol(i){
   const wrapped = (idx + n) % n;
   return list[wrapped];
 }
+
 function stopReel(i){
   if (!spinning[i]||!ws||ws.readyState!==1) return;
   spinning[i]=false;
-  const symbol = currentSymbol(i);
+  const symbol = currentSymbol(i); // click path decides symbol
   ws.send(JSON.stringify({type:"stop_reel", reel:i, symbol}));
-  setStatus(`Locked ${"ABC"[i]}: ${symbol}.`);
-  if (spinning.every(v=>!v)) {
-    document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
-  }
+  if (spinning.every(v=>!v)) document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
 }
-function onReelStopped(i, symbol) {
-  // Update UI state
+
+function stopReelFromGPIO(i){
+  if (!spinning[i]||!ws||ws.readyState!==1) return;
+  const symbol = currentSymbol(i); // GPIO path also uses what the user sees
+  spinning[i]=false;
+  ws.send(JSON.stringify({type:"stop_reel", reel:i, symbol}));
+  if (spinning.every(v=>!v)) document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=true);
+}
+
+function onReelStopped(i, symbol){
+  // Set badge, stop spinning, and snap by shortest path to server-confirmed symbol
   spinning[i] = false;
   badgeEls[i].textContent = `Stopped: ${symbol}`;
-  badgeEls[i].style.display = 'block';
+  badgeEls[i].style.display='block';
 
-  const list = reels[i];
-  const idx = list.indexOf(symbol);
-  if (idx < 0) return;
+  const list = reels[i]; const idx = list.indexOf(symbol); if (idx<0) return;
+  const step = 360 / list.length;
 
-  const step    = 360 / list.length;
-  const current = rotX[i];
-  const targetAbs = -idx * step;
+  // normalize current/target to [0,360), compute shortest diff in [-180,180]
+  const curNorm = ((rotX[i] % 360) + 360) % 360;
+  const tgtNorm = ((-idx * step) % 360 + 360) % 360;
+  let diff = tgtNorm - curNorm;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
 
-  // Compute the shortest rotation (diff in range [-180,180])
-  let diff = (targetAbs - current) % 360;
-  if (diff > 180)    diff -= 360;
-  if (diff < -180)   diff += 360;
-  const dest = current + diff;
+  const startAbs = rotX[i];
+  const destAbs  = startAbs + diff;
 
-  // Animate smoothly to dest with easing
   const frames = 18;
-  let frame = 0;
-  function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-  }
-  (function animate() {
-    frame++;
-    const t = Math.min(frame / frames, 1);
-    const eased = easeOutCubic(t);
-    const val = current + diff * eased;
+  let f = 0;
+  function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+  (function anim(){
+    f++;
+    const t = Math.min(f/frames, 1);
+    const val = startAbs + diff * easeOutCubic(t);
     rotX[i] = val;
     cylEls[i].style.transform = `rotateX(${val}deg)`;
-    if (frame < frames) {
-      requestAnimationFrame(animate);
-    } else {
-      rotX[i] = dest;
-      cylEls[i].style.transform = `rotateX(${dest}deg)`;
-    }
+    if (f < frames) requestAnimationFrame(anim);
+    else { rotX[i] = destAbs; cylEls[i].style.transform = `rotateX(${destAbs}deg)`; }
   })();
-
-  // Disable Stop buttons when all reels are stopped
-  if (spinning.every(v => !v)) {
-    document.querySelectorAll('button:not(.primary)').forEach(b => (b.disabled = true));
-  }
 }
+
 function resetAll(){
   badgeEls.forEach(b=>{ b.classList.remove('show'); b.style.display='none'; b.textContent='Stopped';});
   spinning=[true,true,true];
@@ -345,46 +200,8 @@ function resetAll(){
   document.querySelectorAll('button:not(.primary)').forEach(b=>b.disabled=false);
   if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:"reset"}));
 }
+
 connect();
-</script>
-
-<script>
-// === POLISH PACK JS v1 ===
-(function(){
-  const FLAVOR = ["Nice pick!", "Two to go!", "Feeling lucky?", "Lock it in!", "Almost there!"];
-  const oldSetStatus = window.setStatus;
-  window.setStatus = function(msg){
-    try {
-      if (msg && msg.startsWith("Locked")) {
-        msg += " " + FLAVOR[Math.floor(Math.random()*FLAVOR.length)];
-      }
-    } catch(e){}
-    return oldSetStatus(msg);
-  }
-
-  const origOnReelStopped = window.onReelStopped;
-  window.onReelStopped = function(i, symbol){
-    // Keep the enhanced animation, but don't reflip spinning here (already handled above)
-    origOnReelStopped(i, symbol);
-    const b = document.getElementById("sb"+i);
-    if (b) b.classList.add("show");
-  }
-
-  window.pullLever = function(){
-    const btn = document.querySelector(".lever");
-    if (btn){ btn.style.transform = "translateY(2px)"; setTimeout(()=>btn.style.transform="",120); }
-    if (typeof window.resetAll === "function") window.resetAll();
-  }
-
-  window.addEventListener("keydown", (e)=>{
-    const k = e.key.toLowerCase();
-    if (k === "r") { e.preventDefault(); window.pullLever(); }
-    if (k === "a") { e.preventDefault(); window.stopReel?.(0); }
-    if (k === "s") { e.preventDefault(); window.stopReel?.(1); }
-    if (k === "d") { e.preventDefault(); window.stopReel?.(2); }
-  });
-})();
-// === END POLISH PACK JS v1 ===
 </script>
 </body>
 </html>

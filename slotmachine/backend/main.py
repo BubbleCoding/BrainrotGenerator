@@ -8,13 +8,13 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 # ---------------------------
-# GPIO setup
+# GPIO setup (PiGPIOFactory + single global loop)
 # ---------------------------
 from gpiozero import Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 
-Device.pin_factory = PiGPIOFactory()   # force pigpio
-loop = asyncio.get_event_loop()        # single global loop
+Device.pin_factory = PiGPIOFactory()   # requires pigpiod running
+loop = asyncio.get_event_loop()        # one loop shared by WS & GPIO
 
 # ---------------------------
 # OpenAI setup
@@ -116,7 +116,7 @@ def generate_prompt_and_name(animal: str, fruit: str, obj: str, retries: int = 3
                     content = content[i:j+1]
             data = json.loads(content)
             return data["italian_name"].strip(), data["prompt"].strip()
-        except Exception as e:
+        except Exception:
             if attempt == retries:
                 raise
             time.sleep(min(2**attempt, 10))
@@ -151,12 +151,14 @@ async def handle_input(data: Dict[str, Any]):
             if sym in items:
                 symbol = sym
             else:
+                # Fallback: pick deterministically if no/invalid symbol provided
                 t = time.time_ns()
                 seed = (state.get("session_seed", 0) or 0) ^ (idx*7919) ^ (t & 0xFFFFFFFF)
                 symbol = items[seed % len(items)]
             state["spinning"][idx] = False
             state["result"][idx] = symbol
             await broadcast({"type":"reel_stopped","reel":idx,"symbol":symbol})
+
             if all(not s for s in state["spinning"]):
                 await broadcast({"type":"all_stopped","result":state["result"]})
                 try:
@@ -175,6 +177,7 @@ async def handle_input(data: Dict[str, Any]):
                     await broadcast({"type":"image_ready","url":url,"prompt":dalle_prompt,"italian_name":italian_name})
                 except Exception as e:
                     await broadcast({"type":"error","message":str(e)})
+
     elif data.get("type") == "reset":
         state["spinning"] = [True, True, True]
         state["result"] = [None, None, None]
@@ -189,9 +192,11 @@ async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     async with _clients_lock:
         clients.add(ws)
+
     state["spinning"] = [True, True, True]
     state["result"] = [None, None, None]
     state["session_seed"] = int(time.time()*1000) % 1_000_000
+
     try:
         await ws.send_text(json.dumps({"type":"init","reels":REELS}))
         while True:
@@ -205,19 +210,19 @@ async def ws_endpoint(ws: WebSocket):
             clients.discard(ws)
 
 # ---------------------------
-# GPIO buttons
+# GPIO buttons -> broadcast only; browser decides symbol
 # ---------------------------
-def gpio_schedule(payload):
-    print("[GPIO]", payload)
-    asyncio.run_coroutine_threadsafe(broadcast({"type":"debug","msg":payload}), loop)
-    asyncio.run_coroutine_threadsafe(handle_input(payload), loop)
+def gpio_emit(i: int):
+    print(f"[GPIO] Pressed reel {i}")
+    asyncio.run_coroutine_threadsafe(broadcast({"type":"gpio_press","reel":i}), loop)
 
+# BCM pins (23,27,22). Other leg of each button → any GND.
 btn23 = Button(23, pull_up=True, bounce_time=0.1)
 btn27 = Button(27, pull_up=True, bounce_time=0.1)
 btn22 = Button(22, pull_up=True, bounce_time=0.1)
 
-btn23.when_pressed = lambda: gpio_schedule({"type":"stop_reel","reel":0})
-btn27.when_pressed = lambda: gpio_schedule({"type":"stop_reel","reel":1})
-btn22.when_pressed = lambda: gpio_schedule({"type":"stop_reel","reel":2})
+btn23.when_pressed = lambda: gpio_emit(0)
+btn27.when_pressed = lambda: gpio_emit(1)
+btn22.when_pressed = lambda: gpio_emit(2)
 
-print("[GPIO] Buttons active on BCM 23, 27, 22 (press to send reel stops)")
+print("[GPIO] Buttons active on BCM 23, 27, 22 (broadcasting gpio_press)")
