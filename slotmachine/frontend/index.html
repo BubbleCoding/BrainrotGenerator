@@ -8,8 +8,7 @@
     :root { --accent:#5cf; --bg:#0a0a0a; --panel:#111; }
     html, body { height:100%; cursor: none; }
     body { margin:0; background:var(--bg); color:#eaeaea; font-family:ui-sans-serif, system-ui, -apple-system; }
-    header { text-align:center; padding:24px 12px; font-weight:400; letter-spacing:.5px; 
-             font-family: "Arial Black", Arial, sans-serif; color: #ffcc33; }
+    header { text-align:center; padding:24px 12px; font-weight:600; letter-spacing:.5px; }
     .status { text-align:center; padding:8px; min-height:24px; opacity:.9; }
     .wrap { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; height:calc(100vh - 190px); padding:24px; box-sizing:border-box; }
     .reel { position:relative; border:4px solid #1a1a1a; border-radius:24px; background:var(--panel); box-shadow:0 0 40px #000 inset; overflow:hidden; }
@@ -53,9 +52,7 @@ body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
 @keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:.9} }
 /* Typography for symbols */
 .cyl div {
-  font-family: "Times New Roman", Times, serif;
-  font-weight: 400;
-  font-style: normal;
+  font-family: 'Orbitron', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
   text-transform: uppercase;
   letter-spacing: 1px;
   line-height: 1.25;
@@ -139,25 +136,9 @@ body { background: radial-gradient(circle at center, #111 0%, #000 100%); }
   50%  { margin-left: 20%;  width: 60%; }
   100% { margin-left: 100%; width: 20%; }
 }
-.loading-title { font-weight: 800; font-size: 22px; margin-bottom: 4px; color: #ffffcc; }
-.loading-sub { opacity: .85; font-size: 14px; color: #ffffcc; }
+.loading-title { font-weight: 800; font-size: 22px; margin-bottom: 4px; }
+.loading-sub { opacity: .85; font-size: 14px; }
 .hint { font-size: 12px; opacity: .6; margin-top: 8px; }
-</style>
-<link rel="stylesheet" href="https://use.typekit.net/ihx7ouu.css">
-<style>
-/* Ensure fonts load properly with fallbacks */
-@font-face {
-  font-family: 'ironmonger-inlaid-fallback';
-  src: local('Arial Black'), local('Arial');
-  font-weight: 400;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'freehouse-fallback';
-  src: local('Times New Roman'), local('Times');
-  font-weight: 400;
-  font-style: normal;
-}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet"/></head>
 <body>
