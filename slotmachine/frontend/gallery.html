@@ -49,7 +49,47 @@ async function loadGallery(){
     });
   }catch(e){ console.error("Failed to load manifest", e); }
 }
+
+// WebSocket connection for GPIO button handling
+let ws;
+
+function connectWebSocket(){
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    
+    // Handle GPIO switch state changes - any switch state change navigates back to slot machine
+    if (msg.type === 'gpio_press') {
+      const action = msg.action || 'activated';
+      console.log(`[Gallery] GPIO switch ${msg.reel} ${action} - navigating to slot machine`);
+      window.location.href = '/';
+    }
+  };
+  
+  ws.onclose = () => {
+    console.log('[Gallery] WebSocket disconnected. Reconnecting...');
+    setTimeout(connectWebSocket, 800);
+  };
+  
+  ws.onerror = (error) => {
+    console.log('[Gallery] WebSocket error:', error);
+  };
+}
+
+// Initialize gallery and WebSocket connection
 loadGallery();
+connectWebSocket();
+
+// Add keyboard support for testing (A, S, D keys simulate GPIO button presses)
+window.addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if (k === "a" || k === "s" || k === "d") {
+    e.preventDefault();
+    console.log(`[Gallery] Keyboard ${k.toUpperCase()} pressed - navigating to slot machine`);
+    window.location.href = '/';
+  }
+});
 </script>
 </body>
 </html>

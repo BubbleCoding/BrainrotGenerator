@@ -85,10 +85,10 @@ try:
 
     loop = asyncio.get_event_loop()
 
-    def gpio_emit(index: int):
-        print(f"[GPIO] Physical button pressed for reel {index}")
+    def gpio_emit(index: int, action: str):
+        print(f"[GPIO] Physical switch {action} for reel {index}")
         asyncio.run_coroutine_threadsafe(
-            broadcast({"type":"gpio_press","reel": index}),
+            broadcast({"type":"gpio_press","reel": index, "action": action}),
             loop
         )
 
@@ -96,8 +96,10 @@ try:
     buttons = []
     for pin, idx in btn_gpio_map.items():
         try:
-            b = Button(pin, pull_up=True, bounce_time=0.05)
-            b.when_pressed = lambda idx=idx: gpio_emit(idx)
+            b = Button(pin, pull_up=True, bounce_time=0.1)
+            # Handle both press and release for switches
+            b.when_pressed = lambda idx=idx: gpio_emit(idx, "pressed")
+            b.when_released = lambda idx=idx: gpio_emit(idx, "released")
             buttons.append(b)
         except Exception as e:
             print(f"[GPIO] Failed to initialize Button on GPIO {pin}: {e}")

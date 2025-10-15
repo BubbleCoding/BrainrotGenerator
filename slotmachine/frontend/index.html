@@ -217,15 +217,17 @@ function connect(){
   ws.onmessage = (ev)=>{
     const msg = JSON.parse(ev.data);
     if (msg.type === 'init') initUI(msg.reels);
-    // A physical button press from the server; capture the visible symbol and send
-    // a stop_reel command just like a click. This ensures that the spinning
-    // state and UI are updated consistently when using GPIO buttons.
+    // A physical switch state change from the server; capture the visible symbol and send
+    // a stop_reel command on state change. This ensures that the spinning
+    // state and UI are updated consistently when using GPIO switches.
     if (msg.type === 'gpio_press') {
+      // Handle both press and release events - any state change stops the reel
       if (spinning[msg.reel] && ws && ws.readyState === 1) {
         spinning[msg.reel] = false;
         const symbol = currentSymbol(msg.reel);
         ws.send(JSON.stringify({ type: "stop_reel", reel: msg.reel, symbol }));
-        setStatus(`Locked ${"ABC"[msg.reel]} (GPIO): ${symbol}.`);
+        const action = msg.action || 'activated';
+        setStatus(`Locked ${"ABC"[msg.reel]} (GPIO ${action}): ${symbol}.`);
         if (spinning.every(v => !v)) {
           document.querySelectorAll('button:not(.primary)')
             .forEach(b => b.disabled = true);
@@ -331,7 +333,7 @@ function onReelStopped(i,symbol){  // Deze komt wordt niet gebruikt na reset
   // Attempt to show the overlay if the server has indicated all reels are stopped
   // and this was the last snap to complete. The overlay will appear only
   // after the badge and snap have painted.
-  if (spinning == [false,false,false]) {
+  if (spinning[0] == false && spinning[1] == false && spinning[2] == false) {
       showOverlay("Brewing your brainrot…","Composing prompt & generating image.");
   }
   maybeShowOverlay();
