@@ -80,7 +80,7 @@ function hideOverlay(){
 }
 
 function connect(){
-  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
   
   ws.onmessage = (ev)=>{
     const msg = JSON.parse(ev.data);

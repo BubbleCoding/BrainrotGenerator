@@ -1,0 +1,62 @@
+body {
+    padding: 1rem 2rem;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 400px;
+}
+
+form label {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+}
+
+form label:focus-within div {
+    outline: 2px  solid darkgray;
+    outline-style: outset;
+    outline-offset: -2px;
+}
+
+form label span {
+     flex: 0 0 100%;
+}
+
+form label div {
+    display: flex;
+}
+
+form label div > * {
+    padding: .25rem .125rem;
+    font-size: 1.125rem;
+}
+
+form label input {
+    border: 2px solid var(--accent);
+    border-right: none;
+    outline: none;
+}
+
+form label button {
+    padding: .25rem .5rem;
+    min-width: calc(6ch + .5rem);
+}
+
+form label button:focus-visible {
+    background: var(--bg);
+    color: var(--accent);
+    outline: none;
+}
+
+button {
+    border-radius: unset;
+    background: var(--accent);
+    color: black;
+    width: fit-content;
+}
+h1 {
+    margin: 0;
+}

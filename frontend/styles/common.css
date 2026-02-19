@@ -1,5 +1,7 @@
 /* Common Styles - Shared across all pages */
-
+* {
+    box-sizing: border-box;
+}
 /* CSS Variables */
 :root { 
     --accent: #ffcc33; 
@@ -68,4 +70,14 @@ button:disabled {
     * {
         animation: none !important;
     }
+}
+
+.visually-hidden:not(:focus):not(:active) {
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	height: 1px;
+	width: 1px;
+	overflow: hidden;
+	position: absolute;
+	white-space: nowrap;
 }

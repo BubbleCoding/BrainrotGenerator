@@ -65,11 +65,11 @@ async def auth_middleware(request: Request, call_next):
 @app.get("/login", include_in_schema=False)
 def login_page():
     return FileResponse("frontend/login.html")
-
+    
 @app.post("/login", include_in_schema=False)
 def login(username: str = Form(...), password: str = Form(...)):
     if username != USERNAME or not verify_password(password, PASSWORD_HASH):
-        return HTMLResponse("Incorrect username or password", status_code=401)
+        return RedirectResponse(url="/login?error=1", status_code=303)
     token = create_token(username)
     response = RedirectResponse(url="/", status_code=303)
     response.set_cookie("access_token", f"Bearer {token}", httponly=True, max_age=86400)

@@ -1,19 +1,59 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login</title>
-    <link rel="stylesheet" href="/static/styles/common.css">
-</head>
-<body>
+    <link rel="stylesheet" href="/static/styles/common.css" />
+    <link rel="stylesheet" href="/static/styles/login.css" />
+    <script type="module">
+      const loginInput = document.querySelector("[data-login]");
+      const revealBtn = document.querySelector("[data-reveal]");
+      console.log(revealBtn);
+
+      revealBtn.addEventListener("click", () => {
+        if (loginInput.type === "password") {
+          loginInput.type = "text";
+          revealBtn.textContent = "hide";
+        } else {
+          loginInput.type = "password";
+          revealBtn.textContent = "reveal";
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get("error")) {
+        }
+      });
+    </script>
+  </head>
+  <body>
     <h1>Login</h1>
     <form action="/login" method="POST">
-
-        <input type="text" id="username" name="username" autocomplete="username" value="admin" hidden required>
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
-        <button type="submit">Login</button>
+      <input
+        type="text"
+        id="username"
+        name="username"
+        autocomplete="username"
+        value="admin"
+        hidden
+        required
+      />
+      <label for="password">
+        <span>Password</span>
+        <div>
+          <input
+            data-login
+            type="password"
+            id="password"
+            name="password"
+            required
+          />
+          <button data-reveal type="button">reveal</button>
+        </div>
+      </label>
+      <button type="submit">Login</button>
     </form>
-</body>
+  </body>
 </html>
