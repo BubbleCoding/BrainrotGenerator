@@ -1,5 +1,8 @@
 /* Slot Machine Specific Styles */
+body {
+    cursor: none; 
 
+}
 /* Header */
 header {
   text-align: center;

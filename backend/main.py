@@ -1,10 +1,14 @@
 import os, time, json, hashlib, datetime, requests
 from functools import partial
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Depends, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from dotenv import load_dotenv
 from openai import OpenAI
+from .auth import authenticate, verify_ws_token, create_token, verify_password, USERNAME, PASSWORD_HASH, SECRET_KEY
+from fastapi import Request
+from jose import JWTError, jwt
+
 
 load_dotenv()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -44,23 +48,57 @@ state = {
 
 app = FastAPI()
 
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    protected = ["/"]
+    if request.url.path in protected:
+        token = request.cookies.get("access_token")
+        if not token:
+            return RedirectResponse(url="/login")
+        try:
+            jwt.decode(token.replace("Bearer ", ""), SECRET_KEY, algorithms=["HS256"])
+        except JWTError:
+            return RedirectResponse(url="/login")
+    return await call_next(request)
+
+
+@app.get("/login", include_in_schema=False)
+def login_page():
+    return FileResponse("frontend/login.html")
+
+@app.post("/login", include_in_schema=False)
+def login(username: str = Form(...), password: str = Form(...)):
+    if username != USERNAME or not verify_password(password, PASSWORD_HASH):
+        return HTMLResponse("Incorrect username or password", status_code=401)
+    token = create_token(username)
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie("access_token", f"Bearer {token}", httponly=True, max_age=86400)
+    return response
+
+@app.get("/logout", include_in_schema=False)
+def logout():
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie("access_token")
+    return response
+
 @app.get("/", include_in_schema=False)
 def index():
     return FileResponse("frontend/index.html")
 
+@app.get("/gallery", include_in_schema=False)
 @app.get("/gallery.html", include_in_schema=False)
 def gallery():
     return FileResponse("frontend/gallery.html")
 
-app.mount("/static", StaticFiles(directory="frontend", html=False), name="static")
-
 @app.get("/gallery_manifest")
 def gallery_manifest():
-    path = os.path.join("frontend","generated","manifest.jsonl")
+    path = os.path.join("frontend", "generated", "manifest.jsonl")
     if not os.path.exists(path):
         return []
-    with open(path,"r",encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
+
+app.mount("/static", StaticFiles(directory="frontend", html=False), name="static")
 
 clients = set()
 
